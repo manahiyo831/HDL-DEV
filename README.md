@@ -42,6 +42,40 @@ Ralph_loop/
   - インストールパス: `C:\intelFPGA\20.1\modelsim_ase\win32aloem`
 - **Python**: 3.7 以降
 
+## セットアップ / Setup
+
+### リポジトリのクローン
+
+このリポジトリは `.claude/skills/` にシンボリックリンクを含んでいます。
+
+**Windows環境:**
+```bash
+# 1. Git設定（初回のみ）
+git config --global core.symlinks true
+
+# 2. 開発者モードを有効化（推奨）
+# 設定 → システム → 開発者向け → 「開発者モード」をON
+
+# 3. クローン
+git clone https://github.com/manahiyo831/HDL-DEV.git
+cd HDL-DEV
+```
+
+**注意:** Windows開発者モードが無効の場合、管理者権限でGit操作を実行してください。
+詳細は [SYMLINK_SETUP.md](SYMLINK_SETUP.md) を参照してください。
+
+**Linux/Mac環境:**
+```bash
+git clone https://github.com/manahiyo831/HDL-DEV.git
+cd HDL-DEV
+```
+
+### 依存関係のインストール
+
+```bash
+pip install -r requirements.txt
+```
+
 ## 使い方
 
 ### 1. ソケット通信で高速イテレーション（推奨・NEW!）
