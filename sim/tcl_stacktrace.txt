@@ -1,0 +1,15 @@
+Wed Jan 14 20:35:59 +0900 2026
+Trace back: expected boolean value but got ""
+    while executing
+"expr {$value ? "true" : "false"}"
+    (procedure "dict_to_json" line 13)
+    invoked from within
+"dict_to_json $response"
+    (procedure "send_response" line 3)
+    invoked from within
+"send_response $sock $response"
+    (procedure "handle_command" line 42)
+    invoked from within
+"handle_command sock1E365720"
+  <2:C:/intelFPGA/20.1/modelsim_ase/win32aloem/tk8.6/bgerror.tcl:106: ::tkerror {expected boolean value but got ""}
+  <1:eval:1: ::tk::dialog::error::bgerror {expected boolean value but got ""}

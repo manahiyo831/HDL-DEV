@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# ModelSim
+sim/work/
+sim/transcript
+sim/*.wlf
+sim/*.vstf
+sim/vsim.dbg
+sim/wlft*
+
+# Simulation results (auto-generated)
+results/logs/*.log
+results/logs/*.json
+results/waveforms/*.wlf
+scripts/sim_*.tcl
+
+# Keep directory structure
+!results/logs/.gitkeep
+!results/waveforms/.gitkeep
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Chat logs (optional - コメントアウトで管理対象に含めることも可能)
+Chat_Log/
+
+# Claude Code skills (symlinks to D:\Claude\SKILLS\)
+.claude/skills/
+.claude/settings.local.json
