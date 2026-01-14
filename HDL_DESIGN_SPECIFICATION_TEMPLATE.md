@@ -134,10 +134,10 @@ Describe CDC locations and synchronization methods used.
 
 ### 4.3 リセット仕様 / Reset Specification
 
-- リセット方式 / Reset Type: 非同期リセット / 同期リセット (Asynchronous / Synchronous)
-- リセット極性 / Reset Polarity: 正論理 / 負論理 (Active High / Active Low)
+- リセット方式 / Reset Type: 非同期リセット (Asynchronous) ※プロジェクト標準 / Project standard
+- リセット極性 / Reset Polarity: 正論理 (Active High) ※プロジェクト標準 / Project standard
 - リセット期間 / Reset Duration: 最小XXクロックサイクル / Minimum XX clock cycles
-- リセット解除 / Reset Deassertion: 同期化の有無 / Synchronization (Yes/No)
+- リセット解除 / Reset Deassertion: 同期化推奨 / Synchronization recommended
 
 ---
 
@@ -294,7 +294,49 @@ data   _______<  Valid Data          >___
 
 ### 11.1 コーディングスタイル / Coding Style
 - 言語 / Language: Verilog / SystemVerilog / VHDL
-- コーディング規約 / Coding standard: [規約名 / Standard name]
+- コーディング規約 / Coding standard: STARC RTL Design Style Guide
+
+#### 11.1.1 基本設計ルール / Basic Design Rules
+
+**クロック設計 / Clock Design:**
+- クロックはライジングエッジで動作すること / Clock operates on rising edge
+- クロック信号はFFのクロック入力のみに接続すること / Clock signals connect only to FF clock inputs
+- クロック信号をD入力やブラックボックスに接続しないこと / Don't connect clock to D inputs or black boxes
+
+**リセット設計 / Reset Design:**
+- リセットは正論理(Active-High)の非同期リセットを基本とする / Use active-high asynchronous reset by default
+- 同一リセット線に非同期と同期リセットを混在させないこと / Don't mix async/sync reset on same reset line
+- リセット解除は同期化を推奨 / Synchronize reset deassertion (recommended)
+
+**記述スタイル / Coding Style:**
+- 順序回路(FF)には非ブロッキング代入(<=)を使用 / Use non-blocking assignment (<=) for sequential logic
+- 組み合わせ回路にはブロッキング代入(=)を使用 / Use blocking assignment (=) for combinational logic
+- 組み合わせフィードバック回路を作成しないこと / Don't create combinational feedback
+- RS-FFやラッチにプリミティブセルを使用しないこと / Don't use primitive cells for RS latches/FF
+
+**基本テンプレート / Basic Template:**
+
+```verilog
+// 順序回路 / Sequential Circuit
+always @(posedge clk or posedge rst) begin
+    if (rst) begin
+        // 非同期リセット処理 / Asynchronous reset
+        reg_out <= 1'b0;
+    end else begin
+        // 通常動作 / Normal operation
+        reg_out <= data_in;
+    end
+end
+
+// 組み合わせ回路 / Combinational Circuit
+always @(*) begin
+    case (select)
+        2'b00: result = input_a;
+        2'b01: result = input_b;
+        default: result = 1'b0;
+    endcase
+end
+```
 
 ### 11.2 合成制約 / Synthesis Constraints
 - 最大動作周波数 / Maximum operating frequency: XX MHz
