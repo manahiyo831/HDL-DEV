@@ -43,6 +43,5 @@ desktop.ini
 # Chat logs (optional - コメントアウトで管理対象に含めることも可能)
 Chat_Log/
 
-# Claude Code skills (symlinks to D:\Claude\SKILLS\)
-.claude/skills/
+# Claude Code local settings (user-specific)
 .claude/settings.local.json
