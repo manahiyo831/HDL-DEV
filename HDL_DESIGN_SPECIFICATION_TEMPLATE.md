@@ -314,6 +314,90 @@ data   _______<  Valid Data          >___
 - 組み合わせフィードバック回路を作成しないこと / Don't create combinational feedback
 - RS-FFやラッチにプリミティブセルを使用しないこと / Don't use primitive cells for RS latches/FF
 
+**合成可能性ルール / Synthesizability Rules:**
+
+このプロジェクトで作成するHDL設計は**FPGA実装可能なコード**のみを対象とします。
+All HDL designs in this project must be **FPGA-implementable (synthesizable)**.
+
+- **設計ファイル (hdl/design/)**: 完全に合成可能なコードのみ / Only fully synthesizable code
+- **テストベンチ (hdl/testbench/)**: シミュレーション専用構文OK、簡潔さ優先 / Simulation-only constructs allowed, prioritize simplicity
+
+**禁止事項 (全言語共通) / Forbidden Constructs (All Languages):**
+
+1. **遅延記述 / Delay Statements** ※完全禁止 / Strictly forbidden
+   - Verilog/SystemVerilog: `#10`, `#(CLK_PERIOD)`
+   - VHDL: `wait for 10 ns`
+   - 理由: FPGAに時間概念なし / FPGAs have no concept of time
+
+2. **ファイル操作 / File I/O** ※完全禁止 / Strictly forbidden
+   - Verilog/SystemVerilog: `$readmemh`, `$fopen`, `$fscanf`
+   - VHDL: `file` operations
+   - 理由: ハードウェアに対応物なし / No hardware equivalent
+
+3. **表示・デバッグタスク / Display/Debug Tasks** ※設計ファイルで禁止 / Forbidden in design files
+   - Verilog/SystemVerilog: `$display`, `$monitor`, `$write`
+   - VHDL: `report`, `assert`
+   - テストベンチでは使用推奨 / Recommended in testbenches
+
+4. **浮動小数点型 / Floating-Point Types** ※完全禁止 / Strictly forbidden
+   - Verilog/SystemVerilog: `real` type
+   - VHDL: `real` type
+   - 代替: 固定小数点演算 / Alternative: Fixed-point arithmetic
+
+5. **動的ループ / Dynamic Loops** ※完全禁止 / Strictly forbidden
+   - ループカウントは**コンパイル時定数**のみ / Loop count must be **compile-time constant**
+   - 変数・実行時値によるループ制御禁止 / Variable/runtime loop control forbidden
+   ```verilog
+   // OK: 定数ループ / Constant loop
+   for (i = 0; i < 8; i = i + 1)
+
+   // NG: 変数ループ / Variable loop
+   for (i = 0; i < variable; i = i + 1)
+   ```
+
+**原則禁止（必要時は検討） / Generally Forbidden (Consult if needed):**
+
+以下の構文は原則使用禁止です。使用しないと実装できない場合は、必ずユーザーに問い合わせてください。
+The following constructs are generally forbidden. If essential for implementation, consult the user.
+
+1. **initial文 / initial Blocks**
+   - Verilog/SystemVerilog: `initial` (FPGAでは限定サポート / Limited FPGA support)
+   - 移植性のため原則禁止 / Forbidden for portability
+
+2. **除算・剰余演算 / Division/Modulo Operations**
+   - 2のべき乗による除算以外は原則禁止 / Forbidden except division by powers of 2
+   - 理由: 合成結果が不確定・回路規模大 / Uncertain synthesis, large circuit area
+   - 代替: シフト演算 (例: `/ 8` → `>> 3`) / Alternative: Shift operations
+
+3. **wait文 / wait Statements**
+   - VHDL: `wait` (完全非合成可能 / Completely non-synthesizable)
+
+**言語別ガイドライン / Language-Specific Guidelines:**
+
+**Verilog:**
+- システムタスク禁止（設計ファイル） / System tasks forbidden (design files)
+- `initial`文は避ける / Avoid `initial` blocks
+
+**VHDL:**
+- `wait`文完全禁止 / `wait` statements strictly forbidden
+- 除算は2, 4, 8のみ推奨 / Division by 2, 4, 8 only recommended
+
+**SystemVerilog:**
+- 検証専用構文（UVM、クラス）は設計ファイルで禁止 / Verification-only constructs (UVM, classes) forbidden in design files
+- 合成可能な高度機能は使用可 / Synthesizable advanced features allowed:
+  - `always_comb`, `always_ff`, `always_latch`
+  - `logic` type
+  - `interface` (合成可能 / Synthesizable)
+  - `assertion` (合成可能、推奨 / Synthesizable, recommended)
+  - `enum`, `struct`, `union` (合成可能 / Synthesizable)
+
+**テストベンチの方針 / Testbench Policy:**
+
+- すべての非合成可能構文を使用可能 / All non-synthesizable constructs allowed
+- 簡潔で理解しやすい記述を最優先 / Prioritize simple, readable code
+- SystemVerilog: UVM等の検証フレームワーク使用可 / UVM and verification frameworks allowed
+- 表示タスクを積極活用 / Actively use display tasks (`$display`, `$monitor`, `report`)
+
 **基本テンプレート / Basic Template:**
 
 ```verilog
