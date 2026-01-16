@@ -327,7 +327,6 @@ controller.disconnect()
 - [LESSONS_LEARNED.md](LESSONS_LEARNED.md) - Technical implementation notes, TCL gotchas
 - [HDL_DESIGN_SPECIFICATION_TEMPLATE.md](HDL_DESIGN_SPECIFICATION_TEMPLATE.md) - Template for documenting new designs
 - [docs/HOW_TO_RUN_NEW_SIMULATION.md](docs/HOW_TO_RUN_NEW_SIMULATION.md) - Step-by-step guide for switching modules
-- [docs/modelsim_ref.pdf](docs/modelsim_ref.pdf) - **ModelSim Reference Manual** (Official Intel FPGA documentation, comprehensive TCL command reference, waveform analysis, debugging features) ※Not included in git repository
 
 ## Japanese Documentation
 
