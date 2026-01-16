@@ -210,6 +210,8 @@ $display("TEST_RESULT: FAIL - Counter did not increment");
 5. **View Waveforms** (optional)
    - Waveforms auto-update in GUI after `refresh_waveform()`
    - Or open specific waveform: `python scripts/view_waveform.py`
+   - List signals in wave window: `python scripts/list_wave_signals.py`
+   - Capture screenshot: `python scripts/capture_screenshot.py wave`
 
 ## Path Handling (Critical for Windows)
 
@@ -325,6 +327,7 @@ controller.disconnect()
 - [LESSONS_LEARNED.md](LESSONS_LEARNED.md) - Technical implementation notes, TCL gotchas
 - [HDL_DESIGN_SPECIFICATION_TEMPLATE.md](HDL_DESIGN_SPECIFICATION_TEMPLATE.md) - Template for documenting new designs
 - [docs/HOW_TO_RUN_NEW_SIMULATION.md](docs/HOW_TO_RUN_NEW_SIMULATION.md) - Step-by-step guide for switching modules
+- [docs/modelsim_ref.pdf](docs/modelsim_ref.pdf) - **ModelSim Reference Manual** (Official Intel FPGA documentation, comprehensive TCL command reference, waveform analysis, debugging features) ※Not included in git repository
 
 ## Japanese Documentation
 

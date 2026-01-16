@@ -45,3 +45,6 @@ Chat_Log/
 
 # Claude Code local settings (user-specific)
 .claude/settings.local.json
+
+# Product manuals (proprietary documentation)
+docs/modelsim_ref.pdf
