@@ -17,6 +17,20 @@ sys.path.insert(0, str(Path(__file__).parent))
 from modelsim_client import ModelSimClient
 from simulate_gui import ModelSimGUIRunner
 
+# ============================================================
+# Screenshot Capture Configuration
+# ============================================================
+# Panel widget path mapping for Tcl winfo id command
+# Note: Panel sizes are variable (user can resize), so we use Tcl widget paths
+# Verified paths from ModelSim investigation (2026-01-15)
+PANEL_WIDGET_PATHS = {
+    'wave': '.main_pane.wave',          # Waveform display (verified: 1091x320)
+    'transcript': '.main_pane.transcript',  # Console output (verified: 1831x601)
+    'objects': '.main_pane.objects',    # Objects/signals panel (verified: 364x169)
+    'processes': '.main_pane.process',  # Processes list (verified: 364x168)
+    'sim': '.main_pane.structure',      # Structure/Instance hierarchy (verified: 364x320)
+}
+
 
 class ModelSimController:
     """
@@ -163,7 +177,8 @@ class ModelSimController:
                                 testbench_file: Optional[Path] = None,
                                 sim_time: str = "1us",
                                 restart: bool = True,
-                                refresh_wave: bool = True) -> Dict[str, Any]:
+                                refresh_wave: bool = True,
+                                zoom_range: Optional[tuple[str, str]] = None) -> Dict[str, Any]:
         """
         Quick workflow: recompile -> restart -> run -> refresh waveform
 
@@ -173,9 +188,18 @@ class ModelSimController:
             sim_time: Simulation time
             restart: Restart simulation after recompile (default: True)
             refresh_wave: Refresh waveform after run (default: True)
+            zoom_range: Optional (start_time, end_time) tuple for custom zoom
+                       e.g., ("1ms", "2ms") or None for full zoom
 
         Returns:
             Dictionary with results of each step
+
+        Example:
+            # Normal usage with full zoom
+            controller.quick_recompile_and_run(sim_time="1us")
+
+            # Custom zoom to specific range
+            controller.quick_recompile_and_run(sim_time="3ms", zoom_range=("1ms", "2ms"))
         """
         if not self.is_connected():
             return {
@@ -265,14 +289,30 @@ class ModelSimController:
         # Step 4: Refresh waveform (if enabled)
         if refresh_wave:
             print("\n[4/4] Refreshing waveform...")
-            wave_result = self.client.refresh_waveform()
-            results["wave_refresh"] = wave_result
 
-            if not wave_result.get("success"):
-                print("⚠ Waveform refresh had warnings")
-                self.client.print_response(wave_result)
+            # Apply custom zoom if specified
+            if zoom_range:
+                start, end = zoom_range
+                zoom_result = self.zoom_waveform_range(start, end)
+
+                if not zoom_result.get('success'):
+                    print(f"⚠ Zoom to {start}-{end} failed, using full zoom")
+                    wave_result = self.client.refresh_waveform()
+                else:
+                    print(f"✓ Zoomed to range {start} - {end}")
+                    # Also refresh to ensure waveform updates
+                    wave_result = self.client.refresh_waveform()
+
+                results["wave_refresh"] = wave_result
             else:
-                print("✓ Waveform refreshed")
+                wave_result = self.client.refresh_waveform()
+                results["wave_refresh"] = wave_result
+
+                if not wave_result.get("success"):
+                    print("⚠ Waveform refresh had warnings")
+                    self.client.print_response(wave_result)
+                else:
+                    print("✓ Waveform refreshed")
         else:
             print("\n[4/4] Skipping waveform refresh")
 
@@ -361,11 +401,337 @@ class ModelSimController:
             return {"success": False, "message": "Not connected"}
         return self.client.refresh_waveform()
 
+    def zoom_waveform_range(self, start_time: str, end_time: str) -> Dict[str, Any]:
+        """
+        Zoom waveform to specific time range
+
+        Args:
+            start_time: Start time with unit (e.g., "0ns", "1us", "1.5ms")
+            end_time: End time with unit (e.g., "100ns", "2us", "3ms")
+
+        Returns:
+            Response dictionary with success status
+
+        Example:
+            controller.zoom_waveform_range("1ms", "2ms")  # Zoom to 1ms-2ms range
+            controller.zoom_waveform_range("0ns", "100ns")  # Zoom to first 100ns
+        """
+        if not self.is_connected():
+            return {"success": False, "message": "Not connected"}
+
+        tcl_cmd = f"wave zoom range {start_time} {end_time}"
+        return self.execute_tcl(tcl_cmd)
+
+    def zoom_waveform_full(self) -> Dict[str, Any]:
+        """
+        Zoom waveform to show full simulation time
+
+        Returns:
+            Response dictionary with success status
+
+        Example:
+            controller.zoom_waveform_full()  # Return to full view
+        """
+        if not self.is_connected():
+            return {"success": False, "message": "Not connected"}
+
+        return self.execute_tcl("wave zoom full")
+
+    def find_pulse_times(self, signal_path: str = "Pulse", transcript: Optional[str] = None) -> List[int]:
+        """
+        Find pulse occurrence times from transcript display messages
+
+        Args:
+            signal_path: Signal name keyword to search for (default: "Pulse")
+            transcript: Transcript content (reads from file if None)
+
+        Returns:
+            List of pulse times in nanoseconds
+
+        Example:
+            pulse_times = controller.find_pulse_times("Pulse")
+            # Returns: [1005500000, 2005500000, 3005500000] for pulses at 1ms, 2ms, 3ms
+
+            # Then zoom to first pulse with ±10us window:
+            if pulse_times:
+                t = pulse_times[0]
+                controller.zoom_waveform_range(f"{t-10000}ns", f"{t+10000}ns")
+        """
+        if transcript is None:
+            transcript = self.read_transcript()
+
+        pulse_times = []
+
+        # Search for time markers in display messages
+        # Pattern: "[1005500000 ns] Pulse #1 detected"
+        import re
+        pattern = r"\[(\d+)\s+ns\].*" + re.escape(signal_path)
+
+        for line in transcript.splitlines():
+            match = re.search(pattern, line, re.IGNORECASE)
+            if match:
+                time_ns = int(match.group(1))
+                pulse_times.append(time_ns)
+
+        return pulse_times
+
     def execute_tcl(self, tcl_code: str) -> Dict[str, Any]:
         """Execute arbitrary TCL command"""
         if not self.is_connected():
             return {"success": False, "message": "Not connected"}
         return self.client.execute_tcl(tcl_code)
+
+    def add_wave(self, signal_path: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Add signal(s) to waveform
+
+        Args:
+            signal_path: Signal path (e.g., "/counter_tb/dut/count")
+                        If None, adds all top-level signals (add wave /*)
+
+        Returns:
+            Response dictionary with success status
+
+        Example:
+            # Add all top-level signals
+            controller.add_wave()
+
+            # Add specific signal
+            controller.add_wave("/counter_tb/dut/count")
+
+            # To change format, use change_wave_format()
+            controller.change_wave_format("/counter_tb/dut/count", "unsigned")
+        """
+        if not self.is_connected():
+            return {"success": False, "message": "Not connected"}
+
+        if signal_path is None:
+            # Add all top-level signals
+            tcl_cmd = "add wave /*"
+        else:
+            # Add specific signal
+            tcl_cmd = f"add wave {signal_path}"
+
+        return self.execute_tcl(tcl_cmd)
+
+    def change_wave_format(self, signal_path: str, format: str) -> Dict[str, Any]:
+        """
+        Change display format of existing wave
+
+        Args:
+            signal_path: Signal path (e.g., "/counter_tb/dut/count" or "counter_tb/dut/count")
+            format: New display format - "binary", "hex", "unsigned", "signed", "octal", "ascii"
+
+        Returns:
+            Response dictionary with success status
+
+        Example:
+            # Change counter to decimal
+            controller.change_wave_format("/counter_tb/dut/count", "unsigned")
+
+            # Change to hexadecimal
+            controller.change_wave_format("/counter_tb/dut/state", "hex")
+
+        Note:
+            Uses ModelSim's property wave -radix command to change the display format
+            of an existing signal. The signal name in the wave window is extracted
+            from the full hierarchical path (uses the last component).
+        """
+        if not self.is_connected():
+            return {"success": False, "message": "Not connected"}
+
+        # Extract signal name from hierarchical path for wave window
+        # Wave window uses the last component of the path
+        signal_name = signal_path.split('/')[-1]
+
+        # Use property wave -radix command to change format directly
+        tcl_command = f"property wave -radix {format} {signal_name}"
+        result = self.execute_tcl(tcl_command)
+
+        # Refresh waveform to show the change
+        if result.get('success', False):
+            self.execute_tcl("wave refresh")
+
+        return result
+
+    @staticmethod
+    def get_common_signal_formats() -> Dict[str, str]:
+        """
+        Return common signal format options for reference
+
+        Returns:
+            Dictionary of format names and descriptions
+
+        Example:
+            formats = ModelSimController.get_common_signal_formats()
+            for name, desc in formats.items():
+                print(f"{name}: {desc}")
+        """
+        return {
+            "binary": "Binary (default) - 8'b00001010",
+            "hex": "Hexadecimal - 8'h0A",
+            "unsigned": "Unsigned decimal - 10",
+            "signed": "Signed decimal - -6 or 10",
+            "octal": "Octal - 8'o012",
+            "ascii": "ASCII character - 'A'"
+        }
+
+    def capture_waveform_window(self, output_path: Optional[Path] = None) -> Dict[str, Any]:
+        """
+        Capture waveform window using Tcl geometry query
+
+        This method queries ModelSim via Tcl socket to get the exact wave window
+        position and size, then captures that specific area.
+
+        Args:
+            output_path: Path to save screenshot. If None, returns PIL Image only.
+
+        Returns:
+            Dictionary with:
+            - success: bool
+            - image: PIL.Image (if successful)
+            - path: str (if saved)
+            - geometry: str (e.g., "1200x600+100+50")
+            - message: str
+
+        Example:
+            result = controller.capture_waveform_window(Path("wave.png"))
+            if result['success']:
+                print(f"Saved to {result['path']}")
+                print(f"Geometry: {result['geometry']}")
+        """
+        if not self.is_connected():
+            return {"success": False, "message": "Not connected to ModelSim"}
+
+        try:
+            import win32gui
+            import win32ui
+            import win32con
+            from PIL import Image
+            import re
+
+            # Step 1: Get wave window geometry from Tcl
+            geometry_result = self.client.get_wave_geometry()
+            if not geometry_result.get('success'):
+                return {
+                    "success": False,
+                    "message": f"Failed to get wave geometry: {geometry_result.get('message')}",
+                    "errors": geometry_result.get('errors', [])
+                }
+
+            geometry_str = geometry_result.get('output', '').strip()
+            if not geometry_str:
+                return {
+                    "success": False,
+                    "message": "Empty geometry response from ModelSim"
+                }
+
+            # Step 2: Parse geometry string (format: WIDTHxHEIGHT+X+Y)
+            match = re.match(r'(\d+)x(\d+)\+(-?\d+)\+(-?\d+)', geometry_str)
+            if not match:
+                return {
+                    "success": False,
+                    "message": f"Invalid geometry format: {geometry_str}"
+                }
+
+            width, height, x, y = map(int, match.groups())
+
+            # Step 3: Find ModelSim window handle
+            def find_modelsim_window():
+                windows = []
+                def callback(hwnd, _):
+                    if win32gui.IsWindowVisible(hwnd):
+                        title = win32gui.GetWindowText(hwnd)
+                        if "ModelSim" in title:
+                            windows.append((hwnd, title))
+                    return True
+                win32gui.EnumWindows(callback, None)
+                return windows
+
+            modelsim_windows = find_modelsim_window()
+            if not modelsim_windows:
+                return {
+                    "success": False,
+                    "message": "ModelSim window not found"
+                }
+
+            parent_hwnd = modelsim_windows[0][0]
+
+            # Calculate client area offset
+            # Tcl returns coordinates relative to parent window's client area
+            # GetWindowDC uses coordinates relative to window (including title bar)
+            client_x, client_y = win32gui.ClientToScreen(parent_hwnd, (0, 0))
+            window_rect = win32gui.GetWindowRect(parent_hwnd)
+            window_x, window_y = window_rect[0], window_rect[1]
+
+            offset_x = client_x - window_x
+            offset_y = client_y - window_y
+
+            # Add offset to Tcl coordinates to get window coordinates
+            capture_x = x + offset_x
+            capture_y = y + offset_y
+
+            # Step 4: Capture the specific region
+            hwnd_dc = win32gui.GetWindowDC(parent_hwnd)
+            mfc_dc = win32ui.CreateDCFromHandle(hwnd_dc)
+            save_dc = mfc_dc.CreateCompatibleDC()
+
+            bitmap = win32ui.CreateBitmap()
+            bitmap.CreateCompatibleBitmap(mfc_dc, width, height)
+            save_dc.SelectObject(bitmap)
+
+            # Copy wave window region (using window coordinates with offset)
+            save_dc.BitBlt((0, 0), (width, height), mfc_dc, (capture_x, capture_y), win32con.SRCCOPY)
+
+            # Convert to PIL Image
+            bmp_info = bitmap.GetInfo()
+            bmp_bits = bitmap.GetBitmapBits(True)
+            img = Image.frombuffer(
+                'RGB',
+                (bmp_info['bmWidth'], bmp_info['bmHeight']),
+                bmp_bits, 'raw', 'BGRX', 0, 1
+            )
+
+            # Clean up
+            win32gui.DeleteObject(bitmap.GetHandle())
+            save_dc.DeleteDC()
+            mfc_dc.DeleteDC()
+            win32gui.ReleaseDC(parent_hwnd, hwnd_dc)
+
+            # Step 5: Save if path provided
+            result = {
+                "success": True,
+                "image": img,
+                "geometry": geometry_str,
+                "width": width,
+                "height": height,
+                "x": x,
+                "y": y,
+                "offset_x": offset_x,
+                "offset_y": offset_y,
+                "capture_x": capture_x,
+                "capture_y": capture_y,
+                "message": "Waveform window captured successfully"
+            }
+
+            if output_path:
+                img.save(output_path)
+                result["path"] = str(output_path.absolute())
+
+            return result
+
+        except ImportError as e:
+            return {
+                "success": False,
+                "message": f"Missing required packages: {e}. Install with: pip install pywin32 pillow"
+            }
+        except Exception as e:
+            import traceback
+            return {
+                "success": False,
+                "message": f"Screenshot failed: {e}",
+                "traceback": traceback.format_exc()
+            }
 
     def shutdown_server(self):
         """Shutdown socket server (ModelSim continues running)"""
@@ -534,6 +900,204 @@ class ModelSimController:
             print("=" * 60)
 
         return analysis
+
+    # ============================================================
+    # Screenshot Capture Methods
+    # ============================================================
+
+    def _find_modelsim_window(self) -> Optional[int]:
+        """
+        Find ModelSim parent window HWND
+
+        Returns:
+            Parent window HWND or None if not found
+        """
+        import win32gui
+
+        windows = []
+
+        def callback(hwnd, _):
+            if win32gui.IsWindowVisible(hwnd):
+                title = win32gui.GetWindowText(hwnd)
+                if "ModelSim" in title:
+                    windows.append(hwnd)
+            return True
+
+        win32gui.EnumWindows(callback, None)
+        return windows[0] if windows else None
+
+    def _get_panel_hwnd_via_tcl(self, widget_path: str) -> int:
+        """
+        Get panel HWND via Tcl winfo id command
+
+        Args:
+            widget_path: Tcl widget path (e.g., ".main_pane.wave")
+
+        Returns:
+            Window handle (HWND) as integer
+
+        Raises:
+            RuntimeError: If widget not found or Tcl command fails
+        """
+        if self.client is None or not self.client.is_connected():
+            raise RuntimeError("Not connected to ModelSim. Call connect() first.")
+
+        # Execute Tcl command to get window ID
+        result = self.execute_tcl(f"winfo id {widget_path}")
+
+        if not result.get('success'):
+            raise RuntimeError(
+                f"Failed to get HWND for {widget_path}: {result.get('message')}"
+            )
+
+        # Parse HWND from output (should be decimal integer or hex)
+        try:
+            hwnd_str = result['output'].strip()
+            # Tcl returns in format like "0x12345" or decimal "74565"
+            if hwnd_str.startswith('0x'):
+                hwnd = int(hwnd_str, 16)
+            else:
+                hwnd = int(hwnd_str)
+            return hwnd
+        except (ValueError, KeyError) as e:
+            raise RuntimeError(
+                f"Failed to parse HWND from Tcl output '{result.get('output')}': {e}"
+            )
+
+    def _capture_window_by_hwnd(self, hwnd: int, output_path: Path) -> Dict[str, Any]:
+        """
+        Capture window by HWND using BitBlt
+
+        Args:
+            hwnd: Window handle to capture
+            output_path: Where to save screenshot
+
+        Returns:
+            Dictionary with success, image, path, width, height
+        """
+        import win32gui
+        import win32ui
+        import win32con
+        from PIL import Image
+
+        try:
+            # Get window dimensions
+            left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+            width = right - left
+            height = bottom - top
+
+            # Capture using BitBlt
+            hwnd_dc = win32gui.GetWindowDC(hwnd)
+            mfc_dc = win32ui.CreateDCFromHandle(hwnd_dc)
+            save_dc = mfc_dc.CreateCompatibleDC()
+
+            bitmap = win32ui.CreateBitmap()
+            bitmap.CreateCompatibleBitmap(mfc_dc, width, height)
+            save_dc.SelectObject(bitmap)
+
+            # Copy window contents
+            save_dc.BitBlt((0, 0), (width, height), mfc_dc, (0, 0), win32con.SRCCOPY)
+
+            # Convert to PIL Image
+            bmp_info = bitmap.GetInfo()
+            bmp_bits = bitmap.GetBitmapBits(True)
+            img = Image.frombuffer(
+                'RGB',
+                (bmp_info['bmWidth'], bmp_info['bmHeight']),
+                bmp_bits, 'raw', 'BGRX', 0, 1
+            )
+
+            # Save
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            img.save(output_path)
+
+            return {
+                'success': True,
+                'image': img,
+                'path': str(output_path),
+                'width': width,
+                'height': height
+            }
+
+        finally:
+            # Cleanup resources
+            try:
+                win32gui.DeleteObject(bitmap.GetHandle())
+                save_dc.DeleteDC()
+                mfc_dc.DeleteDC()
+                win32gui.ReleaseDC(hwnd, hwnd_dc)
+            except:
+                pass  # Ignore cleanup errors
+
+    def capture_screenshot(self, target: str = 'wave',
+                          output_path: Optional[Path] = None) -> Dict[str, Any]:
+        """
+        Capture screenshot of specified ModelSim panel
+
+        Args:
+            target: Panel to capture - 'modelsim', 'wave', 'objects',
+                   'processes', 'transcript', 'sim'
+            output_path: Optional custom path
+                        (default: temp/modelsim_{target}.png)
+
+        Returns:
+            Dictionary with keys:
+            - success: bool
+            - image: PIL.Image
+            - path: str
+            - width: int
+            - height: int
+            - target: str
+            - message: str
+
+        Raises:
+            ValueError: If target is invalid
+            RuntimeError: If ModelSim or target window not found
+
+        Example:
+            # Capture waveform panel
+            result = controller.capture_screenshot('wave')
+            print(f"Saved to: {result['path']}")  # temp/modelsim_wave.png
+
+            # Capture full window
+            result = controller.capture_screenshot('modelsim')
+
+            # Custom path
+            result = controller.capture_screenshot(
+                'wave', Path('custom/my_wave.png')
+            )
+        """
+        # Validate target
+        valid_targets = ['modelsim', 'wave', 'objects', 'processes',
+                        'transcript', 'sim']
+        if target not in valid_targets:
+            raise ValueError(
+                f"Invalid target: {target}. "
+                f"Must be one of: {', '.join(valid_targets)}"
+            )
+
+        # Default output path
+        if output_path is None:
+            output_path = self.project_root / 'temp' / f'modelsim_{target}.png'
+
+        # Find target window
+        if target == 'modelsim':
+            # Capture full parent window
+            parent_hwnd = self._find_modelsim_window()
+            if parent_hwnd is None:
+                raise RuntimeError("ModelSim window not found. Is ModelSim running?")
+            target_hwnd = parent_hwnd
+        else:
+            # Get panel HWND via Tcl winfo id command
+            widget_path = PANEL_WIDGET_PATHS[target]
+            target_hwnd = self._get_panel_hwnd_via_tcl(widget_path)
+
+        # Capture
+        result = self._capture_window_by_hwnd(target_hwnd, output_path)
+        result['target'] = target
+        result['message'] = f"Captured {target} panel to {result['path']}"
+
+        return result
 
 
 def main():

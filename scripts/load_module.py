@@ -70,17 +70,19 @@ def load_module(design_files, testbench_file, top_module, sim_time="1us"):
     controller = ModelSimController(project_root)
 
     print("[1/7] Connecting to ModelSim...")
-    try:
-        controller.connect()
-        print("✓ Connected to ModelSim")
-    except Exception as e:
-        print(f"✗ Cannot connect to ModelSim: {e}")
+    connected = controller.connect()
+
+    if not connected:
+        print("")
+        print("✗ Cannot connect to ModelSim")
         print("")
         print("Please start ModelSim first:")
         print("  python scripts/start_modelsim_server.py")
         print("")
         print("Then run this script again.")
         return False
+
+    print("✓ Connected to ModelSim")
 
     # Step 1: Exit current simulation (if any)
     print("\n[2/7] Preparing ModelSim...")

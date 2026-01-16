@@ -12,6 +12,44 @@ Claude → HDL生成 → ModelSim実行 → 結果解析 → Claude → 修正 �
 
 ## 遭遇した問題と解決方法
 
+### 0. TCL JSON変換エラーの修正 (2026-01-16)
+
+**問題:**
+`wave radix unsigned /pwm_generator_tb/duty` コマンドを実行した際、TCLソケットサーバーがJSON変換時にクラッシュする問題が発生しました。
+
+**エラーメッセージ:**
+```
+Error: list element in quotes followed by ":" instead of space
+    while executing
+"llength $value"
+    (procedure "dict_to_json" line 4)
+```
+
+**原因:**
+`modelsim_socket_server.tcl` の `dict_to_json` プロシージャで、`llength $value` を実行する際に、コロン(`:`)を含む値（例: `"unsigned:/pwm_generator_tb/duty"`）が不正なTCLリスト形式として解釈され、エラーが発生していました。TCLのリストパーサーは、引用符で囲まれた要素の後にはスペースを期待しますが、コロンがあるとパースエラーになります。
+
+**解決策:**
+`dict_to_json` プロシージャで `llength` コマンドを `catch` ブロックで囲み、エラーを捕捉するようにしました。`llength` が失敗した場合は、その値を文字列として扱います。
+
+```tcl
+# 修正前
+if {[llength $value] > 1} {
+
+# 修正後
+if {[catch {llength $value} len]} {
+    # Invalid list format (e.g., contains unescaped colons)
+    # Treat as plain string
+    lappend parts "\"$key\": \"[escape_json_string $value]\""
+} elseif {$len > 1} {
+```
+
+**教訓:**
+- TCLの `llength` は、不正なリスト形式の値に対してエラーを投げる
+- すべての外部入力に対しては `catch` でエラーハンドリングを行うべき
+- `catch {command} result_var` パターンは、コマンドの成功/失敗とその結果を同時に取得できる
+
+---
+
 ### 1. TCLスクリプトのエラーチェック構文
 
 **問題:**
@@ -89,9 +127,9 @@ raise .main_pane.wave
 
 **問題:**
 `configure wave -radix decimal`コマンドがエラーになる。
-エラー: `unknown option "-radix"`
+`radix`コマンドを波形追加後に実行しても表示形式が変わらない。
 
-**試した解決方法:**
+**試した解決方法（失敗）:**
 ```tcl
 # エラーを回避するためcatchで囲む
 catch {radix signal unsigned /counter_tb/dut/count}
@@ -101,27 +139,71 @@ catch {radix signal unsigned /counter_tb/dut/count}
 - コマンドはエラーを出さずに実行された（戻り値1で成功）
 - しかし、実際の波形表示は2進数のまま変わらなかった
 
-**現在の状態:**
-**🔴 未解決（課題として残す）**
+**根本原因（判明）:**
+ModelSimでは`radix`コマンドの実行タイミングが重要：
+- **波形追加後に`radix`コマンドを実行しても効果なし**
+- **表示形式は`add wave -radix <format>`で波形追加時に指定する必要がある**
 
-count信号が10進数表示にならない。原因は以下の可能性がある：
-1. `radix`コマンドの構文が間違っている
-2. 信号パスの指定が間違っている
-3. タイミングの問題（信号追加前に設定が必要？）
-4. ModelSim versionによる違い
-
-**今後の調査方向:**
+**解決方法:**
 ```tcl
-# 方法1: 信号を個別に追加して表示形式を指定
+# ✓ 正しい方法: 波形追加時に形式を指定
 add wave -radix unsigned /counter_tb/dut/count
+add wave -radix hex /counter_tb/dut/addr
+add wave -radix binary -r /*
 
-# 方法2: すべて追加後に個別設定
+# ✗ 間違った方法: 追加後に変更しようとする
 add wave -r /*
-radix -unsigned /counter_tb/dut/count
-
-# 方法3: GUIコマンド経由
-# Wave windowで右クリック → Radix → Unsigned Decimal
+radix -unsigned /counter_tb/dut/count  # 効果なし！
 ```
+
+**フォーマット変更方法:**
+追加後に形式を変えたい場合は、波形を削除して再追加が必要：
+```tcl
+delete wave *
+add wave -radix unsigned /counter_tb/dut/count
+add wave -r /*
+wave zoom full
+```
+
+**実装された Python API:**
+```python
+# 方法1: 初期追加時に形式指定（推奨）
+controller.add_waves_with_format(
+    signal_formats={"/counter_tb/dut/count": "unsigned"},
+    default_format="binary"
+)
+
+# 方法2: 追加後に形式変更（波形を再追加）
+controller.change_wave_format({
+    "/counter_tb/dut/count": "hex"
+})
+
+# 方法3: quick_recompile_and_run()で直接
+controller.quick_recompile_and_run(sim_time="1us")
+# ... 次に形式変更
+controller.change_wave_format({"/counter_tb/dut/count": "unsigned"})
+```
+
+**利用可能な形式:**
+- `binary` - 2進数（デフォルト）: 8'b00001010
+- `hex` - 16進数: 8'h0A
+- `unsigned` - 符号なし10進数: 10
+- `signed` - 符号付き10進数: -6 or 10
+- `octal` - 8進数: 8'o012
+- `ascii` - ASCII文字: 'A'
+
+**現在の状態:**
+**✅ 解決済み（2026-01-14）**
+
+以下の機能を`modelsim_controller.py`に実装：
+- `add_waves_with_format()` - 波形追加時に形式指定
+- `change_wave_format()` - 波形を削除して再追加
+- `get_common_signal_formats()` - 利用可能な形式のリスト取得
+
+**参考資料:**
+- ModelSim User Manual - Wave Window Commands
+- SKILLドキュメント: `references/api-reference.md`
+- 実装例: `references/workflow-guide.md`
 
 ---
 

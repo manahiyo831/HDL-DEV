@@ -8,14 +8,12 @@ module counter_tb;
     // Clock and reset
     reg clk;
     reg rst_n;
-    reg enable;
     wire [7:0] count;
 
     // Instantiate the counter
     counter dut (
         .clk(clk),
         .rst_n(rst_n),
-        .enable(enable),
         .count(count)
     );
 
@@ -28,29 +26,16 @@ module counter_tb;
     // Test sequence
     initial begin
         $display("=== Counter Testbench Start ===");
-        $display("Time\t\tRst\tEnable\tCount");
-        $monitor("%0t\t\t%b\t%b\t%d", $time, rst_n, enable, count);
+        $display("Time\t\tRst\tCount");
+        $monitor("%0t\t\t%b\t%d", $time, rst_n, count);
 
         // Initialize
         rst_n = 0;
-        enable = 0;
         #20;
 
         // Release reset
         rst_n = 1;
-        #10;
-
-        // Enable counter
-        enable = 1;
         #200;  // Count for 20 clock cycles
-
-        // Disable counter
-        enable = 0;
-        #50;
-
-        // Re-enable counter
-        enable = 1;
-        #100;
 
         // Reset during counting
         #20;

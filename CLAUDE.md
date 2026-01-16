@@ -324,7 +324,7 @@ controller.disconnect()
 ## Additional Documentation
 
 - [README.md](README.md) - Full API reference, detailed usage examples
-- [LESSONS_LEARNED.md](LESSONS_LEARNED.md) - Technical implementation notes, TCL gotchas
+- [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md) - Technical implementation notes, TCL gotchas
 - [HDL_DESIGN_SPECIFICATION_TEMPLATE.md](HDL_DESIGN_SPECIFICATION_TEMPLATE.md) - Template for documenting new designs
 - [docs/HOW_TO_RUN_NEW_SIMULATION.md](docs/HOW_TO_RUN_NEW_SIMULATION.md) - Step-by-step guide for switching modules
 
@@ -332,5 +332,5 @@ controller.disconnect()
 
 Most documentation is in Japanese (プロジェクトドキュメントは日本語). Key files:
 - README.md: 概要と使い方
-- LESSONS_LEARNED.md: 技術的学習記録
+- docs/LESSONS_LEARNED.md: 技術的学習記録
 - docs/HOW_TO_RUN_NEW_SIMULATION.md: 新規シミュレーション手順

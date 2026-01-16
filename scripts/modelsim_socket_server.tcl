@@ -198,6 +198,9 @@ proc execute_command {command params} {
         "exec_tcl" {
             return [cmd_exec_tcl $params]
         }
+        "get_wave_geometry" {
+            return [cmd_get_wave_geometry $params]
+        }
         "shutdown" {
             return [cmd_shutdown $params]
         }
@@ -232,21 +235,26 @@ proc send_response {sock response} {
 proc dict_to_json {d} {
     set parts {}
     dict for {key value} $d {
-        if {[string is list $value] && [llength $value] > 0} {
-            # Handle lists (arrays in JSON)
+        # Try to get list length, catch errors for invalid list formats
+        if {[catch {llength $value} len]} {
+            # Invalid list format (e.g., contains unescaped colons)
+            # Treat as plain string
+            lappend parts "\"$key\": \"[escape_json_string $value]\""
+        } elseif {$len > 1} {
+            # Valid list with multiple elements (arrays in JSON)
             set items {}
             foreach item $value {
                 lappend items "\"[escape_json_string $item]\""
             }
             lappend parts "\"$key\": \[[join $items ", "]\]"
-        } elseif {[llength $value] == 0} {
-            # Handle empty lists (must check before boolean)
+        } elseif {$len == 0} {
+            # Empty list
             lappend parts "\"$key\": \[\]"
         } elseif {$value != "" && [string is boolean -strict $value]} {
-            # Handle booleans (check for non-empty and use -strict)
+            # Boolean value
             lappend parts "\"$key\": [expr {$value ? "true" : "false"}]"
         } else {
-            # Handle strings
+            # String (including single-element "lists")
             lappend parts "\"$key\": \"[escape_json_string $value]\""
         }
     }
@@ -515,6 +523,37 @@ proc cmd_shutdown {params} {
         output "Server has been stopped. ModelSim is still running." \
         errors [list] \
         warnings [list]]
+}
+
+# Get wave window geometry command
+proc cmd_get_wave_geometry {params} {
+    set output ""
+    set errors {}
+    set warnings {}
+
+    echo "Getting wave window geometry..."
+
+    # Get waveform display area geometry (not the entire wave window)
+    # .main_pane.wave.interior.cs.body.pw.wf is the actual waveform display area
+    if {[catch {winfo geometry .main_pane.wave.interior.cs.body.pw.wf} geometry]} {
+        lappend errors "Failed to get wave geometry: $geometry"
+        return [dict create \
+            success false \
+            message "Failed to get wave window geometry" \
+            output $geometry \
+            errors $errors \
+            warnings $warnings]
+    }
+
+    set output $geometry
+    echo "Wave window geometry: $geometry"
+
+    return [dict create \
+        success true \
+        message "Wave window geometry retrieved" \
+        output $output \
+        errors $errors \
+        warnings $warnings]
 }
 
 # Utility: Stop server

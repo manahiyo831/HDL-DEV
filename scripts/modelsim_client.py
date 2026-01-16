@@ -234,6 +234,16 @@ class ModelSimClient:
         params = {"tcl_code": tcl_code}
         return self.send_command("exec_tcl", params)
 
+    def get_wave_geometry(self) -> Dict[str, Any]:
+        """
+        Get wave window geometry from ModelSim
+
+        Returns:
+            Response dictionary with geometry string (e.g., "1200x600+100+50")
+            Format: WIDTHxHEIGHT+X+Y
+        """
+        return self.send_command("get_wave_geometry")
+
     def shutdown_server(self) -> Dict[str, Any]:
         """
         Shutdown socket server (ModelSim continues running)
