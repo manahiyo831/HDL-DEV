@@ -211,6 +211,87 @@ pwm_out                  |_____________________________...
 ### 8.3 カバレッジ目標 / Coverage Goals
 対象外 - デモ用途のため未規定
 
+### 8.4 検証手順 / Verification Procedure
+
+#### 8.4.1 ModelSim起動とシミュレーション実行
+
+```bash
+# 1. ModelSimサーバー起動（一度のみ）
+python .claude/skills/modelsim-hdl-dev/scripts/start_modelsim_server.py
+
+# 2. 設計をロードしてシミュレーション実行
+python .claude/skills/modelsim-hdl-dev/scripts/load_module.py \
+    "hdl/design/pwm_generator.v" \
+    "hdl/testbench/pwm_generator_tb.v" \
+    "pwm_generator_tb" \
+    "350ms"
+
+# 3. テスト結果確認
+python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 50
+```
+
+#### 8.4.2 アナログ波形の追加
+
+重要な信号（counter、duty）をアナログ表示で追加すると、PWM動作の理解が容易になります。
+
+```bash
+# counterをアナログ表示で追加（8bit unsignedのため0-255スケール）
+python .claude/skills/modelsim-hdl-dev/scripts/add_wave_analog.py \
+    "pwm_generator_tb/dut/counter" \
+    --radix unsigned
+
+# dutyをアナログ表示で追加（8bit unsignedのため0-255スケール）
+python .claude/skills/modelsim-hdl-dev/scripts/add_wave_analog.py \
+    "pwm_generator_tb/dut/duty" \
+    --radix unsigned
+
+# 波形を全体表示にズーム
+python .claude/skills/modelsim-hdl-dev/scripts/zoom_waveform.py full
+
+# 波形をスクリーンショット保存
+python .claude/skills/modelsim-hdl-dev/scripts/capture_screenshot.py wave
+```
+
+**アナログ表示の利点:**
+- `counter`のノコギリ波パターンが視覚的に確認できる
+- `duty`の変化がアナログ波形で明確になる
+- デジタル表示と併用可能（`_analog`サフィックスで別表示）
+
+**注意事項:**
+- `add_wave_analog.py`は`describe`コマンドでbit幅を自動検出
+- Register/Wire型の`[N:M]`パターンのみサポート
+- Integer/Real型は対象外（bit幅不明のため）
+- `--radix`パラメータは必須（signed/unsigned指定）
+
+#### 8.4.3 期待される波形パターン
+
+| 信号 | 期待される表示 |
+|------|---------------|
+| counter | 0→255のノコギリ波（25.6μs周期） |
+| duty | TC001-TC007でステップ状に変化（0→0→255→64→128→192→50→100） |
+| pwm_out | dutyに応じたパルス幅のデジタル波形 |
+
+#### 8.4.4 設計変更後の高速イテレーション
+
+HDLファイルを変更した後の検証手順：
+
+```bash
+# 1. 再コンパイルと実行
+python .claude/skills/modelsim-hdl-dev/scripts/compile.py \
+    "hdl/design/pwm_generator.v" \
+    "hdl/testbench/pwm_generator_tb.v" \
+    "pwm_generator_tb"
+python .claude/skills/modelsim-hdl-dev/scripts/run_sim.py "350ms"
+
+# 2. 結果確認
+python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 50
+
+# 3. 波形更新（アナログ信号は自動保持）
+python .claude/skills/modelsim-hdl-dev/scripts/zoom_waveform.py full
+```
+
+**注:** アナログ信号は一度追加すれば、再コンパイル後も自動的に保持されます。
+
 ---
 
 ## 9. デバッグ機能 / Debug Features

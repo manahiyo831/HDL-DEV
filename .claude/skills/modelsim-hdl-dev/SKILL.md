@@ -79,7 +79,8 @@ python $SKILL/scripts/get_transcript.py 50
 
 # 5. Waveform analysis
 python $SKILL/scripts/list_wave_signals.py  # Get signal names first
-python $SKILL/scripts/change_wave_format.py "counter_tb/count" "unsigned"
+python $SKILL/scripts/add_wave_analog.py "counter_tb/count" --radix unsigned  # Analog view
+python $SKILL/scripts/change_wave_format.py "counter_tb/count" "hex"  # Digital format
 python $SKILL/scripts/capture_screenshot.py "wave"
 ```
 
@@ -108,9 +109,10 @@ python $SKILL/scripts/capture_screenshot.py "wave"
 
 | Script | Purpose |
 |--------|---------|
-| `add_wave.py` | Add signals to waveform |
+| `add_wave.py` | Add signals to waveform (digital) |
+| `add_wave_analog.py` | Add signals with analog display (auto-scaled) |
 | `list_wave_signals.py` | List current signals in waveform |
-| `change_wave_format.py` | Change signal display format (hex/dec/bin) |
+| `change_wave_format.py` | Change digital display format (hex/unsigned/binary) |
 | `zoom_waveform.py` | Zoom waveform (full or time range) |
 | `refresh_waveform.py` | Refresh waveform display |
 | `capture_screenshot.py` | Capture ModelSim panel screenshot |
@@ -118,9 +120,26 @@ python $SKILL/scripts/capture_screenshot.py "wave"
 
 **CRITICAL:** Signal paths must NOT start with `/` (Git Bash path conversion issues). Use `"counter_tb/count"`, not `"/counter_tb/count"`.
 
-**Best practice:** Always run `list_wave_signals.py` first to get exact signal names before using `change_wave_format.py`.
+**Analog Display Usage:**
+```bash
+# Add analog waveform (radix REQUIRED)
+python add_wave_analog.py "counter_tb/count" --radix unsigned  # Register [7:0] → 0-255 scale
+python add_wave_analog.py "adc_tb/sample" --radix signed      # Register [11:0] → -2048 to 2047 scale
 
-**For advanced waveform features (zoom, analog display, format details):** See [references/waveform-control.md](references/waveform-control.md)
+# Change digital format
+python change_wave_format.py "counter_tb/addr" "hex"
+```
+
+**Note on Analog Display:**
+- Only signals with explicit bit width (e.g., `Register [7:0]`, `Wire [15:0]`) support analog display
+- Signals without bit width (`Integer`, `Real`) are not supported for analog (use digital instead)
+- The `--radix` parameter is required to correctly display signed vs unsigned values
+- Analog signals are added with `_analog` suffix label to avoid conflicts
+- You can have both digital and analog views of the same signal simultaneously
+
+**Best practice:** Always run `list_wave_signals.py` first to get exact signal names before using `change_wave_format.py` or `add_wave_analog.py`.
+
+**For advanced waveform features (zoom, format details):** See [references/waveform-control.md](references/waveform-control.md)
 
 **For screenshot capture details:** See [references/screenshot-capture.md](references/screenshot-capture.md)
 
@@ -339,9 +358,10 @@ python $SKILL/scripts/get_transcript.py 50  # Last 50 lines
 - `connection_check.py` - Verify socket connection
 - `get_transcript.py` - Read ModelSim transcript
 - `execute_tcl.py` - Execute arbitrary TCL commands
-- `add_wave.py` - Add signals to waveform
+- `add_wave.py` - Add signals to waveform (digital)
+- `add_wave_analog.py` - Add signals with analog display (auto-scaled)
 - `list_wave_signals.py` - List signals in waveform
-- `change_wave_format.py` - Change signal display format
+- `change_wave_format.py` - Change digital display format (hex/unsigned/binary)
 - `zoom_waveform.py` - Zoom waveform to time range or full
 - `refresh_waveform.py` - Refresh waveform display
 - `capture_screenshot.py` - Capture ModelSim panel screenshots

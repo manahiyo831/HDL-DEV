@@ -9,12 +9,7 @@ dist/
 build/
 
 # ModelSim
-sim/work/
-sim/transcript
-sim/*.wlf
-sim/*.vstf
-sim/vsim.dbg
-sim/wlft*
+sim/
 
 # Simulation results (auto-generated, not needed in CLI mode)
 results/

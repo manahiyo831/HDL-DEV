@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Change signal display format in waveform (digital radix or analog format).
+Change signal display format in waveform (digital radix only).
 
 Supports:
 - Digital formats: binary, hex, unsigned, signed, octal, ascii
-- Analog formats: analog-step, analog-interpolated (with optional height)
+
+For analog display, use add_wave_analog.py instead.
 
 Self-contained format change using controller infrastructure only.
 """
@@ -19,10 +20,7 @@ from modelsim_controller import ModelSimController
 
 # Format categories
 DIGITAL_FORMATS = ['binary', 'hex', 'unsigned', 'signed', 'octal', 'ascii']
-ANALOG_FORMATS = ['analog-step', 'analog-interpolated']
-VALID_FORMATS = DIGITAL_FORMATS + ANALOG_FORMATS
-
-DEFAULT_ANALOG_HEIGHT = 80  # pixels
+VALID_FORMATS = DIGITAL_FORMATS
 
 
 def apply_digital_format(controller, signal_path, format_type):
@@ -41,61 +39,28 @@ def apply_digital_format(controller, signal_path, format_type):
     return controller.execute_tcl(tcl_cmd)
 
 
-def apply_analog_format(controller, signal_path, format_type, height):
-    """
-    Apply analog format to signal with height.
-
-    Args:
-        controller: ModelSimController instance
-        signal_path: Signal path (with leading /)
-        format_type: One of ANALOG_FORMATS
-        height: Height in pixels (default: 80)
-
-    Returns:
-        Result dict from execute_tcl
-    """
-    # Step 1: Apply analog format
-    result_format = controller.execute_tcl(f"property wave -format {format_type} {signal_path}")
-    if not result_format['success']:
-        return result_format
-
-    # Step 2: Apply height
-    result_height = controller.execute_tcl(f"property wave -height {height} {signal_path}")
-    if not result_height['success']:
-        return result_height
-
-    # Return success status
-    return {
-        'success': True,
-        'message': f'Analog format applied (format={format_type}, height={height})'
-    }
-
-
 def main():
     """Main entry point for change_wave_format CLI script."""
     if len(sys.argv) < 3:
-        print("Usage: change_wave_format.py <signal_path> <format> [height]")
+        print("Usage: change_wave_format.py <signal_path> <format>")
         print()
         print("Arguments:")
         print("  signal_path  - Full hierarchical signal path")
-        print("  format       - Display format")
-        print("  height       - (Optional) Height in pixels for analog formats (default: 80)")
+        print("  format       - Display format (radix)")
         print()
         print("Formats:")
         print(f"  Digital (radix): {', '.join(DIGITAL_FORMATS)}")
-        print(f"  Analog:          {', '.join(ANALOG_FORMATS)}")
         print()
         print("IMPORTANT: Signal path must NOT start with '/' (Git Bash issue)")
         print()
         print("Examples:")
-        print('  # Digital formats')
         print('  python change_wave_format.py "counter_tb/count" "unsigned"')
         print('  python change_wave_format.py "counter_tb/data" "hex"')
+        print('  python change_wave_format.py "counter_tb/addr" "binary"')
         print()
-        print('  # Analog formats')
-        print('  python change_wave_format.py "pwm_tb/duty" "analog-step"')
-        print('  python change_wave_format.py "pwm_tb/duty" "analog-step" 100')
-        print('  python change_wave_format.py "pwm_tb/duty" "analog-interpolated" 120')
+        print("For analog display:")
+        print('  Use add_wave_analog.py instead')
+        print('  python add_wave_analog.py "counter_tb/count" --radix unsigned')
         print()
         print("Best Practice:")
         print("  1. Run list_wave_signals.py first to get exact signal names")
@@ -110,19 +75,9 @@ def main():
     if format_type not in VALID_FORMATS:
         print(f"✗ ERROR: Invalid format '{format_type}'")
         print(f"  Valid formats: {', '.join(VALID_FORMATS)}")
+        print()
+        print("For analog display, use add_wave_analog.py instead")
         sys.exit(1)
-
-    # Parse optional height (for analog formats)
-    height = DEFAULT_ANALOG_HEIGHT
-    if len(sys.argv) > 3:
-        try:
-            height = int(sys.argv[3])
-            if height <= 0:
-                print("✗ ERROR: Height must be a positive integer")
-                sys.exit(1)
-        except ValueError:
-            print(f"✗ ERROR: Invalid height value '{sys.argv[3]}' (must be integer)")
-            sys.exit(1)
 
     # Get project root from current working directory
     project_root = Path.cwd()
@@ -130,8 +85,6 @@ def main():
     print("⏳ Changing signal format...")
     print(f"  Signal: {signal_path}")
     print(f"  Format: {format_type}")
-    if format_type in ANALOG_FORMATS:
-        print(f"  Height: {height} pixels")
 
     try:
         # Create controller
@@ -148,11 +101,8 @@ def main():
         if not signal_path.startswith('/'):
             signal_path = f"/{signal_path}"
 
-        # Route to appropriate handler based on format category
-        if format_type in DIGITAL_FORMATS:
-            result = apply_digital_format(controller, signal_path, format_type)
-        elif format_type in ANALOG_FORMATS:
-            result = apply_analog_format(controller, signal_path, format_type, height)
+        # Apply digital format
+        result = apply_digital_format(controller, signal_path, format_type)
 
         # Disconnect
         controller.disconnect()
@@ -163,8 +113,6 @@ def main():
             print()
             print("✓ SUCCESS: Signal format changed")
             print(f"  Signal '{signal_path}' is now displayed as {format_type}")
-            if format_type in ANALOG_FORMATS:
-                print(f"  Height: {height} pixels")
             sys.exit(0)
         else:
             print()
