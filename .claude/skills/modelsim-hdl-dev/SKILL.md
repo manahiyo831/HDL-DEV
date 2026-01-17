@@ -266,13 +266,11 @@ python $SKILL/scripts/capture_screenshot.py "wave" "results/my_wave.png"
 - Second argument (optional): Custom output path
 
 **Output:**
-- Default location: `screenshots/`
+- Default location: `screenshots/` (in current directory)
 - Filename: `screenshot.png` (fixed, always overwrites)
 - Custom path: Specify as second argument
 
 ### Implementation Details
-
-For technical details and implementation history, see [references/screenshot-notes.md](references/screenshot-notes.md)
 
 **Key technique:**
 - Uses Tcl `winfo id` command to get window handles from widget paths
@@ -553,17 +551,6 @@ Complete testbench skeleton with:
 - Watchdog timer
 - Best practices
 
-**TCL Script Template:**
-[assets/templates/sim_script_template.tcl](assets/templates/sim_script_template.tcl)
-
-ModelSim TCL script template with:
-- Library setup
-- Compilation commands
-- Waveform configuration
-- Error handling
-- Detailed comments
-
-
 ## Best Practices
 
 1. **Use TEST_RESULT: markers** - Enable autonomous verification (`TEST_RESULT: PASS/FAIL`)
@@ -597,7 +584,6 @@ ModelSim TCL script template with:
 
 ### References (Documentation)
 - `troubleshooting.md` - Common issues and solutions
-- `screenshot-notes.md` - Screenshot capture guidelines
 
 ### Assets (Examples & Templates)
 - `examples/counter.v` - 8-bit counter design
@@ -605,7 +591,6 @@ ModelSim TCL script template with:
 - `examples/pulse_gen_1ms.v` - 1ms pulse generator (NEW)
 - `examples/pulse_gen_1ms_tb.v` - Pulse generator testbench (NEW)
 - `templates/basic_testbench_template.v` - Testbench skeleton
-- `templates/sim_script_template.tcl` - TCL script template
 - `templates/HDL_DESIGN_SPECIFICATION_TEMPLATE.md` - Design spec template
 
 ---
@@ -623,7 +608,6 @@ ModelSim TCL script template with:
 ## See Also
 
 - **Troubleshooting:** [references/troubleshooting.md](references/troubleshooting.md)
-- **Screenshot Notes:** [references/screenshot-notes.md](references/screenshot-notes.md)
 
 ---
 

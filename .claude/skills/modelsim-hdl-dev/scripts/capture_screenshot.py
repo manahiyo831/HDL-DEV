@@ -6,6 +6,27 @@ Captures screenshot of specified ModelSim panel
 This module is completely self-contained and independent of ModelSimController.
 It only depends on ModelSimClient for TCL command execution.
 
+Implementation Notes:
+--------------------
+This implementation uses Tcl 'winfo id' to get the window handle (HWND) from
+Tcl widget paths (e.g., .main_pane.wave), then captures directly using Win32 BitBlt.
+
+Key advantages:
+- No coordinate conversion needed (uses actual screen coordinates)
+- Works with any window size (panels are resizable)
+- Reliable across dual-monitor setups
+- Simple and maintainable
+
+Alternative approaches that were tested but not used:
+1. Tcl coordinate-based capture: Failed due to complex offset calculations
+2. MDIClient window search: Not applicable (ModelSim uses Tcl/Tk, not MDI)
+3. Size-based window search: Works but fragile if window is resized
+
+For future extensions:
+- To capture specific sub-regions: Use widget hierarchy (.main_pane.wave.interior.cs.body.pw.wf)
+- For dynamic size handling: Use winfo width/height commands
+- For multiple panels: Iterate through PANEL_WIDGET_PATHS
+
 Author: Claude Code
 Date: 2026-01-17
 """
@@ -259,8 +280,8 @@ def main():
     target = sys.argv[1] if len(sys.argv) > 1 else 'wave'
     output_path = Path(sys.argv[2]) if len(sys.argv) > 2 else None
 
-    # Get project root (parent of scripts directory)
-    project_root = Path(__file__).parent.parent
+    # Get project root (current working directory)
+    project_root = Path.cwd()
 
     print("="*60)
     print("ModelSim Screenshot Capture")
