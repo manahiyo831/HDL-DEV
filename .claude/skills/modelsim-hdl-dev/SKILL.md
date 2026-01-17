@@ -120,6 +120,10 @@ python $SKILL/scripts/capture_screenshot.py "wave"
 
 **Best practice:** Always run `list_wave_signals.py` first to get exact signal names before using `change_wave_format.py`.
 
+**For advanced waveform features (zoom, analog display, format details):** See [references/waveform-control.md](references/waveform-control.md)
+
+**For screenshot capture details:** See [references/screenshot-capture.md](references/screenshot-capture.md)
+
 ---
 
 ## Design Workflow
@@ -158,158 +162,6 @@ When creating non-trivial HDL modules (with multiple sub-modules, state machines
 - Any design where specification clarity is valuable
 
 **For simple modules** (counters, shift registers, basic combinational logic), you can skip the specification and go straight to implementation with testbench.
-
----
-
-## Advanced Waveform Control
-
-### Waveform Zoom
-
-Focus on specific time ranges or events for detailed inspection.
-
-```bash
-# Zoom to specific time range
-python $SKILL/scripts/zoom_waveform.py range 380ns 450ns
-
-# Return to full view
-python $SKILL/scripts/zoom_waveform.py full
-```
-
-**Use cases:**
-- Inspect reset sequences
-- Focus on pulse occurrences
-- Examine specific clock cycles
-- Debug timing violations
-
-### Signal Display Format
-
-Change signal display formats between binary, decimal, hexadecimal, and octal.
-
-**Recommended Workflow (Two-Step Process):**
-
-**Step 1: List signals to get exact names**
-```bash
-python $SKILL/scripts/list_wave_signals.py
-```
-
-This will output signal names like:
-```
-1. /counter_tb/clk
-2. /counter_tb/rst_n
-3. /counter_tb/count
-4. /counter_tb/dut/clk
-5. /counter_tb/dut/rst_n
-6. /counter_tb/dut/count
-```
-
-**Step 2: Change format using exact signal name (without leading `/`)**
-```bash
-# Change to decimal (unsigned)
-python $SKILL/scripts/change_wave_format.py "counter_tb/dut/count" "unsigned"
-
-# Change to hexadecimal
-python $SKILL/scripts/change_wave_format.py "counter_tb/state" "hex"
-
-# Change to binary
-python $SKILL/scripts/change_wave_format.py "counter_tb/data" "binary"
-```
-
-**Available formats:** binary, hex, unsigned, signed, octal, ascii
-
-**Use cases:**
-- View counters in decimal for readability
-- Debug address buses in hexadecimal
-- Verify byte values in decimal or hex
-
-**Important Notes:**
-- Always list signals first to get exact signal names
-- DO NOT use leading `/` in arguments (Git Bash path conversion issue)
-- The script internally adds `/` prefix for the TCL command
-- ModelSim uses `property wave -radix` command to change formats
-
-### Analog Wave Display
-
-Display signals as analog waveforms (stepped or interpolated) for better visualization of value changes.
-
-**Supported analog formats:**
-- `analog-step` - Stepped analog display (階段状のアナログ表示)
-- `analog-interpolated` - Smooth interpolated analog display (補間された滑らかなアナログ表示)
-
-**Usage:**
-
-```bash
-# Analog-step with default height (80 pixels)
-python $SKILL/scripts/change_wave_format.py "counter_tb/count" "analog-step"
-
-# Analog-step with custom height
-python $SKILL/scripts/change_wave_format.py "pwm_tb/duty" "analog-step" 100
-
-# Analog-interpolated with custom height
-python $SKILL/scripts/change_wave_format.py "pwm_tb/duty" "analog-interpolated" 120
-```
-
-**Use cases:**
-- Visualize counter values as analog signals
-- Display PWM duty cycle changes
-- Show ADC/DAC signal levels
-- Analyze signal transitions visually
-
-**Important Notes:**
-- Default height is 80 pixels (can be customized with optional third parameter)
-- Analog formats use `property wave -format` command
-- Height is adjusted using `property wave -height` command
-- Switch back to digital format using any digital radix format (binary, hex, unsigned, etc.)
-
----
-
-## Screenshot Capture
-
-Capture screenshots of ModelSim panels for visual verification and documentation.
-
-### Supported Targets
-
-- **modelsim** - Full ModelSim window (includes all panels)
-- **wave** - Waveform display panel only
-- **objects** - Objects/signals list panel
-- **processes** - Processes list panel
-- **transcript** - Console output panel
-- **sim** - Structure/Instance hierarchy panel
-
-### Usage
-
-```bash
-# Capture waveform panel
-python $SKILL/scripts/capture_screenshot.py "wave"
-# Saves to: screenshots/screenshot.png
-
-# Capture full window
-python $SKILL/scripts/capture_screenshot.py "modelsim"
-# Saves to: screenshots/screenshot.png (overwrites)
-
-# Capture transcript
-python $SKILL/scripts/capture_screenshot.py "transcript"
-# Saves to: screenshots/screenshot.png (overwrites)
-
-# Custom output path
-python $SKILL/scripts/capture_screenshot.py "wave" "results/my_wave.png"
-```
-
-**Arguments:**
-- First argument: Target panel (modelsim, wave, objects, processes, transcript, sim)
-- Second argument (optional): Custom output path
-
-**Output:**
-- Default location: `screenshots/` (in current directory)
-- Filename: `screenshot.png` (fixed, always overwrites)
-- Custom path: Specify as second argument
-
-### Implementation Details
-
-**Key technique:**
-- Uses Tcl `winfo id` command to get window handles from widget paths
-- Direct HWND capture using Win32 BitBlt
-- Works with any window size (panels are resizable)
-- No coordinate conversion required
 
 ---
 
@@ -432,87 +284,15 @@ MODELSIM_DEFAULT_PATH = "C:/intelFPGA/21.1/modelsim_ase/win32aloem"
 
 ## Error Handling
 
-All CLI scripts provide detailed, user-friendly error messages with automatic analysis of ModelSim errors. When an error occurs, you'll see:
+All CLI scripts provide detailed, user-friendly error messages with automatic analysis of ModelSim errors.
 
-**Error Message Structure:**
-- **What went wrong** - Clear error summary (e.g., "Compilation error in hdl/design/counter.v")
-- **Where it happened** - File path and line number (extracted from ModelSim output)
-- **Why it happened** - Error code (e.g., vlog-13069, vsim-4005) and detailed message
-- **How to fix** - Context-specific suggestions based on error type
+**Error messages include:**
+- Clear error summary
+- File path and line number
+- Error code (e.g., vlog-13069, vsim-4005)
+- Context-specific suggestions for fixing
 
-### Example Error Outputs
-
-**Compilation Error:**
-```
-============================================================
-ERROR: Compilation error in hdl/design/counter.v
-============================================================
-  File: hdl/design/counter.v
-  Line: 15
-  Code: vlog-13069
-
-  near "endmodule": syntax error, unexpected endmodule.
-
-Suggestions:
-  • Check for missing semicolons
-  • Verify begin/end blocks are properly closed
-  • Check for mismatched parentheses or brackets
-============================================================
-```
-
-**File Not Found Error:**
-```
-============================================================
-ERROR: File access error
-============================================================
-  Code: vlog-7
-  Errno: ENOENT
-
-  Failed to open design file '../hdl/design/missing.v' in read mode.
-
-Suggestions:
-  • File not found - Check path is relative from sim/ directory
-  • Use '../hdl/design/file.v' not 'hdl/design/file.v'
-  • Verify file exists and spelling is correct
-============================================================
-```
-
-**Waveform Signal Not Found:**
-```
-============================================================
-ERROR: Signal not found in waveform
-============================================================
-  Code: TCL command failed
-
-  Signal '/counter_tb/wrong_name' does not exist
-
-Suggestions:
-  • Run list_wave_signals.py to get exact signal names
-  • Do not use leading '/' in signal paths (Git Bash issue)
-  • Check signal path format: 'module/signal' not '/module/signal'
-============================================================
-```
-
-### Error Code Reference
-
-**Common ModelSim error codes:**
-- **vlog-7**: File not found or cannot open file
-- **vlog-2054**: Invalid file specification (possibly a directory)
-- **vlog-13069**: Syntax errors with file/line location
-- **vsim-4005**: Invalid command argument
-- **vsim-3009**: Module not found in work library
-
-### How It Works
-
-The error analysis system:
-1. **Parses ModelSim output** using regex patterns to extract error codes, file paths, and line numbers
-2. **Provides context-aware suggestions** based on:
-   - Specific error codes (e.g., vlog-7 → check file paths)
-   - Error message keywords (e.g., "syntax error" → check semicolons)
-   - Operation context (compilation, simulation, waveform operations)
-3. **Formats output** in a consistent, readable structure
-
-All error analysis is done by `modelsim_controller.analyze_error()` - a common utility used by all CLI scripts.
+**For detailed error examples, error code reference, and implementation details:** See [references/error-handling.md](references/error-handling.md)
 
 ---
 
@@ -528,61 +308,13 @@ python $SKILL/scripts/get_transcript.py 50  # Last 50 lines
 
 ---
 
-## Examples
+## Examples and Templates
 
-### Example 1: Counter
+**For complete examples (counter, pulse generator) and templates (testbench, design spec):** See [references/examples.md](references/examples.md)
 
-Basic 8-bit counter with enable and reset.
-
-- Design: [assets/examples/counter.v](assets/examples/counter.v)
-- Testbench: [assets/examples/counter_tb.v](assets/examples/counter_tb.v)
-
-**Features demonstrated:**
-- Clock generation
-- Reset sequence
-- Enable control
-- TEST_RESULT: markers
-- Watchdog timer
-
----
-
-### Example 2: Pulse Generator (1ms)
-
-Generates 1 pulse every 1ms with 1MHz clock input.
-
-- Design: [assets/examples/pulse_gen_1ms.v](assets/examples/pulse_gen_1ms.v)
-- Testbench: [assets/examples/pulse_gen_1ms_tb.v](assets/examples/pulse_gen_1ms_tb.v)
-
-**Features demonstrated:**
-- Parameter-based timing (COUNT_MAX = 1000-1)
-- Pulse interval verification with tolerance (±1%)
-- Multiple pulse detection (3 pulses)
-- Real-world timing constraints (1MHz clock, 1ms period)
-
----
-
-### Templates
-
-**Design Specification Template:**
-[assets/templates/HDL_DESIGN_SPECIFICATION_TEMPLATE.md](assets/templates/HDL_DESIGN_SPECIFICATION_TEMPLATE.md)
-
-Comprehensive HDL design specification template for complex designs:
-- Interface and signal definitions
-- Timing and protocol specifications
-- State machine documentation
-- Register maps
-- Verification scenarios
-- **Note:** Fill in only relevant sections; omit sections that don't apply
-
-**Testbench Template:**
-[assets/templates/basic_testbench_template.v](assets/templates/basic_testbench_template.v)
-
-Complete testbench skeleton with:
-- Clock generation
-- Test case structure
-- TEST_RESULT: markers
-- Watchdog timer
-- Best practices
+**Quick access to templates:**
+- [Testbench Template](assets/templates/basic_testbench_template.v)
+- [Design Specification Template](assets/templates/HDL_DESIGN_SPECIFICATION_TEMPLATE.md)
 
 ## Best Practices
 
@@ -617,6 +349,10 @@ Complete testbench skeleton with:
 
 ### References (Documentation)
 - `troubleshooting.md` - Common issues and solutions
+- `waveform-control.md` - Advanced waveform viewing and manipulation
+- `screenshot-capture.md` - Screenshot capture details and targets
+- `error-handling.md` - Error examples, codes, and implementation
+- `examples.md` - Complete examples and templates
 
 ### Assets (Examples & Templates)
 - `examples/counter.v` - 8-bit counter design
@@ -641,6 +377,10 @@ Complete testbench skeleton with:
 ## See Also
 
 - **Troubleshooting:** [references/troubleshooting.md](references/troubleshooting.md)
+- **Advanced Waveform Control:** [references/waveform-control.md](references/waveform-control.md)
+- **Screenshot Capture:** [references/screenshot-capture.md](references/screenshot-capture.md)
+- **Error Handling:** [references/error-handling.md](references/error-handling.md)
+- **Examples and Templates:** [references/examples.md](references/examples.md)
 
 ---
 
