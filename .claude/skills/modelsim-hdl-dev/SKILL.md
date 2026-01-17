@@ -227,6 +227,39 @@ python $SKILL/scripts/change_wave_format.py "counter_tb/data" "binary"
 - The script internally adds `/` prefix for the TCL command
 - ModelSim uses `property wave -radix` command to change formats
 
+### Analog Wave Display
+
+Display signals as analog waveforms (stepped or interpolated) for better visualization of value changes.
+
+**Supported analog formats:**
+- `analog-step` - Stepped analog display (階段状のアナログ表示)
+- `analog-interpolated` - Smooth interpolated analog display (補間された滑らかなアナログ表示)
+
+**Usage:**
+
+```bash
+# Analog-step with default height (80 pixels)
+python $SKILL/scripts/change_wave_format.py "counter_tb/count" "analog-step"
+
+# Analog-step with custom height
+python $SKILL/scripts/change_wave_format.py "pwm_tb/duty" "analog-step" 100
+
+# Analog-interpolated with custom height
+python $SKILL/scripts/change_wave_format.py "pwm_tb/duty" "analog-interpolated" 120
+```
+
+**Use cases:**
+- Visualize counter values as analog signals
+- Display PWM duty cycle changes
+- Show ADC/DAC signal levels
+- Analyze signal transitions visually
+
+**Important Notes:**
+- Default height is 80 pixels (can be customized with optional third parameter)
+- Analog formats use `property wave -format` command
+- Height is adjusted using `property wave -height` command
+- Switch back to digital format using any digital radix format (binary, hex, unsigned, etc.)
+
 ---
 
 ## Screenshot Capture
