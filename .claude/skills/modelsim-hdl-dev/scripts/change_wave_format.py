@@ -43,7 +43,7 @@ def apply_digital_format(controller, signal_path, format_type):
 
 def apply_analog_format(controller, signal_path, format_type, height):
     """
-    Apply analog format to signal with height and dividers.
+    Apply analog format to signal with height.
 
     Args:
         controller: ModelSimController instance
@@ -54,35 +54,20 @@ def apply_analog_format(controller, signal_path, format_type, height):
     Returns:
         Result dict from execute_tcl
     """
-    # Extract signal name from path for divider labels
-    signal_name = signal_path.split('/')[-1]
-
-    # Step 1: Insert divider ABOVE signal using -insert option
-    divider_top = f"=== {signal_name} (analog) ==="
-    result_top = controller.execute_tcl(f'wave add -divider "{divider_top}" -insert {signal_path}')
-    if not result_top['success']:
-        return result_top
-
-    # Step 2: Apply analog format
-    # ModelSim uses: analogstep, analoginterpolated (no hyphen!)
-    tcl_format = format_type.replace('-', '')  # analog-step → analogstep
-    result_format = controller.execute_tcl(f"property wave -format {tcl_format} {signal_path}")
+    # Step 1: Apply analog format
+    result_format = controller.execute_tcl(f"property wave -format {format_type} {signal_path}")
     if not result_format['success']:
         return result_format
 
-    # Step 3: Apply height
+    # Step 2: Apply height
     result_height = controller.execute_tcl(f"property wave -height {height} {signal_path}")
     if not result_height['success']:
         return result_height
 
-    # Step 4: Insert divider BELOW signal (simple: append to end)
-    divider_bottom = f"--- {signal_name} (analog) ---"
-    result_bottom = controller.execute_tcl(f'wave add -divider "{divider_bottom}"')
-
-    # Return combined success status
+    # Return success status
     return {
         'success': True,
-        'message': f'Analog format applied with dividers (format={tcl_format}, height={height})'
+        'message': f'Analog format applied (format={format_type}, height={height})'
     }
 
 
@@ -180,7 +165,6 @@ def main():
             print(f"  Signal '{signal_path}' is now displayed as {format_type}")
             if format_type in ANALOG_FORMATS:
                 print(f"  Height: {height} pixels")
-                print("  Dividers added for visual separation")
             sys.exit(0)
         else:
             print()
