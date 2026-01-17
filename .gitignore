@@ -38,3 +38,10 @@ Chat_Log/
 
 # Claude Code local settings (user-specific)
 .claude/settings.local.json
+
+# Temporary screenshot directories
+temp/
+screenshots/
+
+# Windows null device file
+nul
