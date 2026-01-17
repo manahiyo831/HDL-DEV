@@ -81,58 +81,56 @@ This is a **Claude + ModelSim Auto-Simulation Environment** for HDL development.
 
 ### Python Simulation Modes
 
-**1. Socket API Mode (Fastest - Recommended for Claude)**
+**1. Using SKILL CLI Scripts (Recommended)**
 
-**Note:** Scripts are in SKILL location, so Python path adjustment is needed:
+Activate the modelsim-hdl-dev SKILL and use CLI scripts:
+```bash
+# Step 1: Start ModelSim (one-time)
+python .claude/skills/modelsim-hdl-dev/scripts/start_modelsim_server.py
+
+# Step 2: Load design and run initial simulation
+python .claude/skills/modelsim-hdl-dev/scripts/load_module.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb" "1us"
+
+# Step 3: Check results
+python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 50
+
+# Step 4: Fast iteration after HDL changes
+python .claude/skills/modelsim-hdl-dev/scripts/compile.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb"
+python .claude/skills/modelsim-hdl-dev/scripts/run_sim.py "1us"
+python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 50
+```
+
+See SKILL documentation for complete usage: `.claude/skills/modelsim-hdl-dev/SKILL.md`
+
+**2. Python Infrastructure Layer (Advanced)**
+
+For custom automation, use the lean infrastructure layer directly:
 
 ```python
 from pathlib import Path
 import sys
 
-# Add SKILL scripts to Python path
-sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts")))
+# Add SKILL internal scripts to Python path
+sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts/internal")))
 
 from modelsim_controller import ModelSimController
 
-# Initialize controller (use Path.cwd() for current directory)
+# Initialize controller
 controller = ModelSimController(Path.cwd())
 
-# First time: Start ModelSim GUI with socket server
-controller.start_gui_with_server(
-    design_files=[Path("hdl/design/counter.v")],
-    testbench_file=Path("hdl/testbench/counter_tb.v"),
-    top_module="counter_tb",
-    sim_time="1us"
-)
+# Connect to running ModelSim server
+if controller.connect():
+    # Execute TCL commands
+    result = controller.execute_tcl("wave zoom full")
 
-# After HDL modifications: recompile and run without restart
-result = controller.quick_recompile_and_run(sim_time="1us")
+    # Read transcript
+    transcript = controller.read_transcript(lines=50)
+    print(transcript)
 
-# Analyze results automatically
-analysis = controller.analyze_simulation(verbose=True, recent_only=True)
-if analysis['success']:
-    print(analysis['test_results']['message'])
-else:
-    for error in analysis['errors']['errors']:
-        print(error)
-
-controller.disconnect()
+    controller.disconnect()
 ```
 
-**2. Using SKILL (Recommended)**
-
-Activate the modelsim-hdl-dev SKILL and use CLI scripts:
-```bash
-# Start ModelSim
-python .claude/skills/modelsim-hdl-dev/scripts/modelsim_start.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb" "1us"
-
-# Fast iteration
-python .claude/skills/modelsim-hdl-dev/scripts/compile.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb"
-python .claude/skills/modelsim-hdl-dev/scripts/run_sim.py "1us"
-python .claude/skills/modelsim-hdl-dev/scripts/analyze_results.py
-```
-
-See SKILL documentation for complete usage: `.claude/skills/modelsim-hdl-dev/SKILL.md`
+**Note:** The infrastructure layer provides basic socket communication and TCL execution. For complete workflows, use the CLI scripts documented above and in SKILL.md.
 
 ### Testing
 
@@ -170,8 +168,8 @@ HDL-DEV/
 ├── sim/
 │   ├── work/            - Compiled library (auto-generated)
 │   └── transcript       - ModelSim execution log (analyze for errors/results)
-└── docs/
-    └── HOW_TO_RUN_NEW_SIMULATION.md - Workflow examples
+└── archive/docs/     - Archived documentation
+    └── HOW_TO_RUN_NEW_SIMULATION.md - Workflow examples (archived)
 ```
 
 ### Result Analysis System
@@ -187,31 +185,46 @@ $display("TEST_RESULT: PASS - Counter is functioning (final count: %d)", count);
 $display("TEST_RESULT: FAIL - Counter did not increment");
 ```
 
-## Development Workflow (Claude AI Loop)
+## Development Workflow
 
-1. **Generate/Modify HDL**
-   - Create design: `hdl/design/<module>.v`
-   - Create testbench: `hdl/testbench/<module>_tb.v`
-   - Use `$display("TEST_RESULT: ...")` for pass/fail detection
+For complete HDL development workflow with ModelSim, see `.claude/skills/modelsim-hdl-dev/SKILL.md`.
 
-2. **Run Simulation**
-   ```python
-   controller.quick_recompile_and_run(sim_time="1us")
+**Quick CLI Workflow:**
+
+1. **Start ModelSim** (one-time)
+   ```bash
+   python .claude/skills/modelsim-hdl-dev/scripts/start_modelsim_server.py
    ```
 
-3. **Analyze Results**
-   ```python
-   analysis = controller.analyze_simulation(verbose=True, recent_only=True)
+2. **Load design**
+   ```bash
+   python .claude/skills/modelsim-hdl-dev/scripts/load_module.py "hdl/design/<module>.v" "hdl/testbench/<module>_tb.v" "<module>_tb" "1us"
    ```
 
-4. **Check Success**
-   - If `analysis['success']` is True and test results show PASS → Done
-   - If errors found → Fix HDL and repeat from step 2
-   - No ModelSim restart needed between iterations
+3. **Edit HDL files**
+   - Create/modify design: `hdl/design/<module>.v`
+   - Create/modify testbench: `hdl/testbench/<module>_tb.v`
+   - Use `$display("TEST_RESULT: PASS/FAIL - ...")` for automated result detection
 
-5. **View Waveforms** (optional)
-   - Waveforms auto-update in GUI after `refresh_waveform()`
-   - See SKILL documentation for waveform viewing, signal listing, and screenshot capture
+4. **Recompile and run**
+   ```bash
+   python .claude/skills/modelsim-hdl-dev/scripts/compile.py "hdl/design/<module>.v" "hdl/testbench/<module>_tb.v" "<module>_tb"
+   python .claude/skills/modelsim-hdl-dev/scripts/run_sim.py "1us"
+   ```
+
+5. **Check results**
+   ```bash
+   python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 50
+   ```
+
+6. **Repeat steps 3-5** - No ModelSim restart needed
+
+7. **View waveforms** (optional)
+   ```bash
+   python .claude/skills/modelsim-hdl-dev/scripts/list_wave_signals.py
+   python .claude/skills/modelsim-hdl-dev/scripts/change_wave_format.py "signal/path" "unsigned"
+   python .claude/skills/modelsim-hdl-dev/scripts/capture_screenshot.py "wave"
+   ```
 
 ## Path Handling (Critical for Windows)
 
@@ -229,7 +242,7 @@ path_str = "hdl\\design\\counter.v"
 - Design files: `../hdl/design/file.v`
 - Testbench files: `../hdl/testbench/file_tb.v`
 
-## Important TCL Conventions (from LESSONS_LEARNED.md)
+## Important TCL Conventions (from archive/docs/LESSONS_LEARNED.md)
 
 1. **Error handling:** Use `catch {command}` not `if {$? != 0}`
 2. **$finish behavior:** Set `onfinish stop` to prevent dialog
@@ -258,84 +271,46 @@ path_str = "hdl\\design\\counter.v"
 ## Troubleshooting
 
 **Socket connection fails:**
-```python
-# Increase connection delay if ModelSim GUI slow to start
-controller.start_gui_with_server(..., connect_delay=5.0)
-```
+```bash
+# Check if server is running
+python .claude/skills/modelsim-hdl-dev/scripts/connection_check.py
 
-**Old errors showing in analysis:**
-```python
-# Use recent_only=True to check only last 100 lines
-analysis = controller.analyze_simulation(recent_only=True)
+# Restart ModelSim if needed (close ModelSim GUI first)
+python .claude/skills/modelsim-hdl-dev/scripts/start_modelsim_server.py
 ```
 
 **Compilation errors:**
-- Check `sim/transcript` for full error messages
+```bash
+# View recent transcript for error details
+python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 50
+```
 - Verify file paths (relative from `sim/`, forward slashes)
-- Ensure `work` library exists: `vlib work`
+- Check syntax errors in Verilog files
+- Ensure `work` library exists: `vlib work` in `sim/` directory
 
 **Waveform not updating:**
-```python
-controller.refresh_waveform()  # Explicitly refresh after run
+```bash
+# Manually refresh waveform
+python .claude/skills/modelsim-hdl-dev/scripts/refresh_waveform.py
 ```
 
 **ModelSim GUI unresponsive:**
-- Close and restart ModelSim
-- Socket server automatically starts on next `start_gui_with_server()`
+- Close and restart ModelSim GUI
+- Socket server automatically starts on next `start_modelsim_server.py`
+- Check `sim/transcript` for error messages
 
-## Complete Self-Contained Example
-
-```python
-from pathlib import Path
-import sys
-
-# Add SKILL scripts to Python path
-sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts")))
-
-from modelsim_controller import ModelSimController
-
-# Setup (use Path.cwd() for current directory)
-controller = ModelSimController(Path.cwd())
-
-# First run: Start GUI
-controller.start_gui_with_server(
-    design_files=[Path("hdl/design/counter.v")],
-    testbench_file=Path("hdl/testbench/counter_tb.v"),
-    top_module="counter_tb",
-    sim_time="1us"
-)
-
-# Modify counter.v...
-
-# Fast re-simulation
-result = controller.quick_recompile_and_run(sim_time="1us")
-if result['success']:
-    analysis = controller.analyze_simulation(verbose=True, recent_only=True)
-    if analysis['success'] and analysis['test_results']['found']:
-        if 'PASS' in analysis['test_results']['message']:
-            print("✓ Test passed!")
-        else:
-            print("✗ Test failed:", analysis['test_results']['message'])
-    elif analysis['errors']['errors']:
-        print("✗ Compilation/simulation errors:")
-        for error in analysis['errors']['errors'][:5]:
-            print(f"  {error}")
-else:
-    print("✗ Recompile failed:", result['message'])
-
-controller.disconnect()
-```
+**For complete troubleshooting guide, see SKILL.md**
 
 ## Additional Documentation
 
 - [README.md](README.md) - Full API reference, detailed usage examples
-- [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md) - Technical implementation notes, TCL gotchas
-- [HDL_DESIGN_SPECIFICATION_TEMPLATE.md](HDL_DESIGN_SPECIFICATION_TEMPLATE.md) - Template for documenting new designs
-- [docs/HOW_TO_RUN_NEW_SIMULATION.md](docs/HOW_TO_RUN_NEW_SIMULATION.md) - Step-by-step guide for switching modules
+- [archive/docs/LESSONS_LEARNED.md](archive/docs/LESSONS_LEARNED.md) - Technical implementation notes, TCL gotchas (archived)
+- [.claude/skills/modelsim-hdl-dev/assets/templates/HDL_DESIGN_SPECIFICATION_TEMPLATE.md](.claude/skills/modelsim-hdl-dev/assets/templates/HDL_DESIGN_SPECIFICATION_TEMPLATE.md) - Template for documenting new designs
+- [archive/docs/HOW_TO_RUN_NEW_SIMULATION.md](archive/docs/HOW_TO_RUN_NEW_SIMULATION.md) - Step-by-step guide for switching modules (archived)
 
 ## Japanese Documentation
 
 Most documentation is in Japanese (プロジェクトドキュメントは日本語). Key files:
 - README.md: 概要と使い方
-- docs/LESSONS_LEARNED.md: 技術的学習記録
-- docs/HOW_TO_RUN_NEW_SIMULATION.md: 新規シミュレーション手順
+- archive/docs/LESSONS_LEARNED.md: 技術的学習記録（アーカイブ済み）
+- archive/docs/HOW_TO_RUN_NEW_SIMULATION.md: 新規シミュレーション手順（アーカイブ済み）
