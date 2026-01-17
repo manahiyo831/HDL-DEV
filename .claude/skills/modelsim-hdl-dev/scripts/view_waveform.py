@@ -17,7 +17,7 @@ def view_waveform(waveform_file: str = None, modelsim_path: str = "C:/intelFPGA/
         modelsim_path: ModelSimのインストールディレクトリ
         auto_add_signals: すべての信号を自動的に追加するかどうか
     """
-    project_root = Path(__file__).parent.parent
+    project_root = Path.cwd()
     waveforms_dir = project_root / "results" / "waveforms"
     scripts_dir = project_root / "scripts"
     modelsim_exe = Path(modelsim_path) / "modelsim.exe"
@@ -87,7 +87,7 @@ def view_waveform(waveform_file: str = None, modelsim_path: str = "C:/intelFPGA/
 
 def list_waveforms():
     """利用可能な波形ファイルを一覧表示"""
-    project_root = Path(__file__).parent.parent
+    project_root = Path.cwd()
     waveforms_dir = project_root / "results" / "waveforms"
 
     wlf_files = sorted(waveforms_dir.glob("sim_*.wlf"), reverse=True)

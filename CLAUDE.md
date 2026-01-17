@@ -44,12 +44,20 @@ This is a **Claude + ModelSim Auto-Simulation Environment** for HDL development.
 ### Python Simulation Modes
 
 **1. Socket API Mode (Fastest - Recommended for Claude)**
+
+**Note:** Scripts are in SKILL location, so Python path adjustment is needed:
+
 ```python
 from pathlib import Path
-from scripts.modelsim_controller import ModelSimController
+import sys
 
-# Initialize controller
-controller = ModelSimController(Path("d:/Claude/HDL-DEV"))
+# Add SKILL scripts to Python path
+sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts")))
+
+from modelsim_controller import ModelSimController
+
+# Initialize controller (use Path.cwd() for current directory)
+controller = ModelSimController(Path.cwd())
 
 # First time: Start ModelSim GUI with socket server
 controller.start_gui_with_server(
@@ -73,30 +81,28 @@ else:
 controller.disconnect()
 ```
 
-**2. GUI Interactive Mode**
-```bash
-python scripts/simulate_gui.py
-```
-Opens ModelSim GUI with waveforms. Manual commands in Transcript window.
+**2. Using SKILL (Recommended)**
 
-**3. Headless CLI Mode**
+Activate the modelsim-hdl-dev SKILL and use CLI scripts:
 ```bash
-python scripts/modelsim_runner.py
+# Start ModelSim
+python .claude/skills/modelsim-hdl-dev/scripts/modelsim_start.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb" "1us"
+
+# Fast iteration
+python .claude/skills/modelsim-hdl-dev/scripts/compile.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb"
+python .claude/skills/modelsim-hdl-dev/scripts/run_sim.py "1us"
+python .claude/skills/modelsim-hdl-dev/scripts/analyze_results.py
 ```
-Batch mode for automated testing. Returns JSON results.
+
+See SKILL documentation for complete usage: `.claude/skills/modelsim-hdl-dev/SKILL.md`
 
 ### Testing
 
-Run socket communication test:
-```bash
-python scripts/test_socket_communication.py
-```
-
 View waveforms:
 ```bash
-python scripts/view_waveform.py                    # Latest waveform
-python scripts/view_waveform.py --list             # List all waveforms
-python scripts/view_waveform.py results/waveforms/sim_20260114_195517.wlf
+python .claude/skills/modelsim-hdl-dev/scripts/view_waveform.py                    # Latest waveform
+python .claude/skills/modelsim-hdl-dev/scripts/view_waveform.py --list             # List all waveforms
+python .claude/skills/modelsim-hdl-dev/scripts/view_waveform.py results/waveforms/sim_20260114_195517.wlf
 ```
 
 ### ModelSim TCL Commands (in Transcript or via Python)
@@ -117,59 +123,17 @@ wave zoom full                         # Zoom waveform to fit window
 ### Directory Structure
 
 ```
-hdl/
-  design/          - Verilog design files (.v)
-  testbench/       - Testbench files (*_tb.v)
-sim/
-  work/            - Compiled library (auto-generated)
-  transcript       - ModelSim execution log (analyze for errors/results)
-scripts/
-  modelsim_runner.py       - Headless CLI simulation (324 LOC)
-  modelsim_controller.py   - High-level API (610 LOC)
-  modelsim_client.py       - TCP socket client (342 LOC)
-  simulate_gui.py          - GUI launcher (411 LOC)
-  modelsim_socket_server.tcl - TCL server for ModelSim
-  test_socket_communication.py - Connection tests
-  view_waveform.py         - Waveform viewer
-  sim_*.tcl                - Auto-generated TCL scripts
-results/
-  logs/            - Simulation logs (sim_*.log, result_*.json)
-  waveforms/       - Waveform files (*.wlf)
-docs/
-  HOW_TO_RUN_NEW_SIMULATION.md - Workflow examples
-```
-
-### Key Components
-
-**modelsim_runner.py**: Self-contained batch simulator
-- Generates TCL scripts
-- Runs `vsim -c` (command-line mode)
-- Parses logs for errors/warnings
-- Returns structured JSON results
-
-**modelsim_controller.py**: High-level orchestration
-- Launches GUI with socket server
-- Manages connection lifecycle
-- Provides `quick_recompile_and_run()` for fast iteration
-- Analyzes `sim/transcript` for autonomous result checking
-
-**modelsim_client.py**: Low-level TCP communication
-- Connects to localhost:12345
-- Sends JSON commands to TCL server
-- Commands: `ping`, `recompile`, `restart`, `run`, `refresh_waveform`, `exec_tcl`, `shutdown`
-
-**modelsim_socket_server.tcl**: TCL server running inside ModelSim
-- Listens on TCP port 12345
-- Parses JSON commands from Python
-- Executes vlog/vsim/wave commands
-- Returns JSON responses
-
-### Communication Flow
-
-```
-Python (Controller) → TCP:12345 → TCL Server (in ModelSim) → vsim/vlog
-                                                            ↓
-Python ← JSON response ← TCL Server ← ModelSim execution result
+HDL-DEV/
+├── .claude/skills/
+│   └── modelsim-hdl-dev/   - SKILL with all automation scripts (CLI + internal)
+├── hdl/
+│   ├── design/          - Verilog design files (.v)
+│   └── testbench/       - Testbench files (*_tb.v)
+├── sim/
+│   ├── work/            - Compiled library (auto-generated)
+│   └── transcript       - ModelSim execution log (analyze for errors/results)
+└── docs/
+    └── HOW_TO_RUN_NEW_SIMULATION.md - Workflow examples
 ```
 
 ### Result Analysis System
@@ -209,9 +173,7 @@ $display("TEST_RESULT: FAIL - Counter did not increment");
 
 5. **View Waveforms** (optional)
    - Waveforms auto-update in GUI after `refresh_waveform()`
-   - Or open specific waveform: `python scripts/view_waveform.py`
-   - List signals in wave window: `python scripts/list_wave_signals.py`
-   - Capture screenshot: `python scripts/capture_screenshot.py wave`
+   - See SKILL documentation for waveform viewing, signal listing, and screenshot capture
 
 ## Path Handling (Critical for Windows)
 
@@ -287,10 +249,15 @@ controller.refresh_waveform()  # Explicitly refresh after run
 
 ```python
 from pathlib import Path
-from scripts.modelsim_controller import ModelSimController
+import sys
 
-# Setup
-controller = ModelSimController(Path("d:/Claude/HDL-DEV"))
+# Add SKILL scripts to Python path
+sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts")))
+
+from modelsim_controller import ModelSimController
+
+# Setup (use Path.cwd() for current directory)
+controller = ModelSimController(Path.cwd())
 
 # First run: Start GUI
 controller.start_gui_with_server(

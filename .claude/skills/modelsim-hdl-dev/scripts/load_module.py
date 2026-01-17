@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 # Add scripts directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent / "internal"))
 
 from modelsim_controller import ModelSimController
 
@@ -54,8 +54,8 @@ def load_module(design_files, testbench_file, top_module, sim_time="1us"):
     design_files = [Path(f) for f in design_files]
     testbench_file = Path(testbench_file)
 
-    # Get project root (parent of scripts directory)
-    project_root = Path(__file__).parent.parent
+    # Get project root (current working directory)
+    project_root = Path.cwd()
 
     print("="*60)
     print("ModelSim Module Loader")
@@ -94,16 +94,20 @@ def load_module(design_files, testbench_file, top_module, sim_time="1us"):
 
     # Step 2: Compile design
     print("\n[3/7] Compiling design files...")
-    result = controller.recompile(
-        design_files=design_files,
-        testbench_file=testbench_file
-    )
 
+    # Compile each design file
+    for design_file in design_files:
+        design_path = controller.normalize_path(str(design_file))
+        result = controller.execute_tcl(f'vlog -work work {design_path}')
+        if not result['success']:
+            print(f"✗ Failed to compile {design_file}")
+            return False
+
+    # Compile testbench
+    tb_path = controller.normalize_path(str(testbench_file))
+    result = controller.execute_tcl(f'vlog -work work {tb_path}')
     if not result['success']:
-        print("✗ Compilation failed!")
-        if 'errors' in result:
-            for error in result['errors'][:10]:
-                print(f"  {error}")
+        print(f"✗ Failed to compile testbench {testbench_file}")
         return False
 
     print("✓ Compilation successful")
@@ -129,7 +133,7 @@ def load_module(design_files, testbench_file, top_module, sim_time="1us"):
 
     # Step 5: Run simulation
     print(f"\n[6/7] Running simulation for {sim_time}...")
-    run_result = controller.run(sim_time)
+    run_result = controller.execute_tcl(f"run {sim_time}")
 
     if not run_result.get('success'):
         print("✗ Simulation failed")
@@ -138,10 +142,10 @@ def load_module(design_files, testbench_file, top_module, sim_time="1us"):
 
     print("✓ Simulation completed")
 
-    # Step 6: Refresh waveform
+    # Step 6: Refresh waveform and bring to front
     print("\n[7/7] Refreshing waveform...")
     controller.refresh_waveform()
-    print("✓ Waveform refreshed")
+    print("✓ Waveform refreshed and brought to front")
 
     print("\n" + "="*60)
     print("✓ Design loaded and simulated successfully!")

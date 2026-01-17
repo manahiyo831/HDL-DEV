@@ -13,27 +13,15 @@ Claude → HDL生成 → ModelSim実行 → 結果解析 → Claude → 修正 �
 ## ディレクトリ構造
 
 ```
-Ralph_loop/
+HDL-DEV/
+├── .claude/skills/
+│   └── modelsim-hdl-dev/   # SKILL (全自動化スクリプト含む)
 ├── hdl/                    # HDL設計ファイル
 │   ├── design/             # 設計ファイル (.v, .vhd)
 │   └── testbench/          # テストベンチファイル
-├── sim/                    # ModelSim作業ディレクトリ
-│   ├── work/               # コンパイル済みライブラリ
-│   └── transcript          # ModelSim実行ログ
-├── scripts/                        # 自動化スクリプト
-│   ├── modelsim_runner.py          # コマンドライン自動シミュレーション
-│   ├── simulate_gui.py             # GUI起動スクリプト
-│   ├── modelsim_socket_server.tcl  # TCLソケットサーバー (NEW!)
-│   ├── modelsim_client.py          # Pythonソケットクライアント (NEW!)
-│   ├── modelsim_controller.py      # 高レベルコントローラー (NEW!)
-│   ├── test_socket_communication.py # ソケット通信テスト (NEW!)
-│   ├── view_waveform.py            # 波形ビューア
-│   └── sim_*.tcl                   # 自動生成されるTCLスクリプト
-└── results/                # シミュレーション結果
-    ├── logs/               # シミュレーションログ
-    │   ├── sim_*.log       # 各シミュレーションのログ
-    │   └── result_*.json   # 結果の詳細（JSON形式）
-    └── waveforms/          # 波形ファイル (.wlf)
+└── sim/                    # ModelSim作業ディレクトリ
+    ├── work/               # コンパイル済みライブラリ
+    └── transcript          # ModelSim実行ログ
 ```
 
 ## 必要な環境
@@ -84,12 +72,19 @@ pip install -r requirements.txt
 
 #### 初回起動
 
+**注意:** スクリプトはSKILL内に配置されているため、Pythonパスの調整が必要です：
+
 ```python
 from pathlib import Path
-from scripts.modelsim_controller import ModelSimController
+import sys
+
+# SKILLスクリプトへのパスを追加
+sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts")))
+
+from modelsim_controller import ModelSimController
 
 # コントローラーを初期化
-controller = ModelSimController(Path("d:/Claude/Ralph_loop"))
+controller = ModelSimController(Path.cwd())
 
 # ModelSim GUIをソケットサーバー付きで起動（一度だけ）
 controller.start_gui_with_server(
@@ -134,12 +129,6 @@ controller.execute_tcl("wave zoom range 0ns 500ns")
 controller.disconnect()
 ```
 
-#### テストスクリプトで動作確認
-
-```bash
-python scripts/test_socket_communication.py
-```
-
 **利点:**
 - ✓ ModelSim再起動不要で超高速イテレーション
 - ✓ Pythonから柔軟に制御可能
@@ -148,46 +137,20 @@ python scripts/test_socket_communication.py
 
 ---
 
-### 2. GUIでインタラクティブにシミュレーション（従来方式）
+### 2. SKILLを使用したCLI方式（推奨）
 
-波形を見ながらリアルタイムでシミュレーションできます。
+modelsim-hdl-dev SKILLを有効化して、CLIスクリプトを使用します。
 
-```bash
-python scripts/simulate_gui.py
-```
-
-**GUI上での操作:**
-- **Transcript（下部）** でコマンド入力
-  ```tcl
-  run 1us          # 追加で1usシミュレーション
-  restart -f       # 最初からやり直し
-  wave zoom full   # 波形を全体表示
-  ```
-- **Wave window** で波形を確認
-- **Objects** から信号をドラッグして波形に追加
-
-### 3. コマンドラインで自動テスト
-
-結果のみを確認したい場合や、CI/CDでの自動テストに使用。
+詳細は `.claude/skills/modelsim-hdl-dev/SKILL.md` を参照してください。
 
 ```bash
-python scripts/modelsim_runner.py
-```
+# ModelSim起動
+python .claude/skills/modelsim-hdl-dev/scripts/modelsim_start.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb" "1us"
 
-または、Pythonから：
-
-```python
-from scripts.modelsim_runner import ModelSimRunner
-from pathlib import Path
-
-runner = ModelSimRunner()
-result = runner.simulate(
-    design_files=[Path("hdl/design/counter.v")],
-    testbench_file=Path("hdl/testbench/counter_tb.v"),
-    top_module="counter_tb",
-    sim_time="1us"
-)
-runner.print_result(result)
+# 高速イテレーション
+python .claude/skills/modelsim-hdl-dev/scripts/compile.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb"
+python .claude/skills/modelsim-hdl-dev/scripts/run_sim.py "1us"
+python .claude/skills/modelsim-hdl-dev/scripts/analyze_results.py
 ```
 
 ### 4. Claudeとの協働ワークフロー
@@ -200,9 +163,7 @@ runner.print_result(result)
    - `hdl/testbench/adder_tb.v` にテストベンチを作成
 
 3. **Claudeが自動でGUIシミュレーションを起動**
-   ```bash
-   python scripts/simulate_gui.py
-   ```
+   - SKILLのCLIスクリプトを使用（詳細はSKILL.md参照）
    - ModelSim GUIが開き、波形が表示されます
 
 4. **波形を見ながら確認**
@@ -330,7 +291,13 @@ ModelSim GUIをソケットサーバー付きで起動します。
 
 **使用例:**
 ```python
-from scripts.modelsim_client import ModelSimClient
+import sys
+from pathlib import Path
+
+# SKILLスクリプトへのパスを追加
+sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts")))
+
+from modelsim_client import ModelSimClient
 
 with ModelSimClient(port=12345) as client:
     if client.ping():
@@ -376,20 +343,13 @@ with ModelSimClient(port=12345) as client:
 - エラーメッセージを読んで、設計を修正してください
 
 ### 波形ファイルを見たい
-最新のシミュレーション波形を自動的に開く:
+波形ファイルの表示はSKILL内のスクリプトを使用:
 ```bash
-python scripts/view_waveform.py
+python .claude/skills/modelsim-hdl-dev/scripts/view_waveform.py
+python .claude/skills/modelsim-hdl-dev/scripts/view_waveform.py --list
 ```
 
-特定の波形ファイルを開く:
-```bash
-python scripts/view_waveform.py results/waveforms/sim_20260114_195517.wlf
-```
-
-利用可能な波形ファイルを一覧表示:
-```bash
-python scripts/view_waveform.py --list
-```
+詳細はSKILL.mdを参照してください。
 
 **波形ビューアの使い方:**
 - すべての信号が自動的に追加されます

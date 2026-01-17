@@ -27,10 +27,11 @@ def start_modelsim_server():
     """Start ModelSim GUI with socket server only."""
 
     # Get project root and paths
-    project_root = Path(__file__).parent.parent
+    project_root = Path.cwd()
     sim_dir = project_root / "sim"
-    scripts_dir = project_root / "scripts"
-    tcl_server_script = scripts_dir / "modelsim_socket_server.tcl"
+    # TCL server script is in the SKILL internal directory
+    skill_scripts_dir = Path(__file__).parent
+    tcl_server_script = skill_scripts_dir / "internal" / "modelsim_socket_server.tcl"
 
     # ModelSim path
     MODELSIM_DEFAULT_PATH = "C:/intelFPGA/20.1/modelsim_ase/win32aloem"

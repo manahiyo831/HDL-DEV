@@ -26,7 +26,7 @@ class ModelSimRunner:
         self.vlib_exe = self.modelsim_path / "vlib.exe"
 
         # プロジェクトのルートディレクトリ
-        self.project_root = Path(__file__).parent.parent
+        self.project_root = Path.cwd()
         self.hdl_dir = self.project_root / "hdl"
         self.sim_dir = self.project_root / "sim"
         self.scripts_dir = self.project_root / "scripts"

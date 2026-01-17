@@ -33,7 +33,7 @@ def test_basic_workflow():
     print()
 
     # Initialize controller
-    project_root = Path(__file__).parent.parent
+    project_root = Path.cwd()
     print(f"Project root: {project_root}")
 
     controller = ModelSimController(
@@ -228,7 +228,7 @@ def test_manual_connection():
     print()
 
     # Initialize controller
-    project_root = Path(__file__).parent.parent
+    project_root = Path.cwd()
     controller = ModelSimController(project_root)
 
     # Connect

@@ -16,15 +16,8 @@ sim/*.vstf
 sim/vsim.dbg
 sim/wlft*
 
-# Simulation results (auto-generated)
-results/logs/*.log
-results/logs/*.json
-results/waveforms/*.wlf
-scripts/sim_*.tcl
-
-# Keep directory structure
-!results/logs/.gitkeep
-!results/waveforms/.gitkeep
+# Simulation results (auto-generated, not needed in CLI mode)
+results/
 
 # VSCode
 .vscode/
