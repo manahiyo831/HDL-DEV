@@ -28,6 +28,8 @@ HDL-DEV/
 
 ## 必要な環境
 
+- **OS**: Windows 11
+  - 本プロジェクトは Windows 11 環境で開発・テストされています
 - **ModelSim**: Intel FPGA Starter Edition 20.1 (2020.1) 以降
   - インストールパス: `C:\intelFPGA\20.1\modelsim_ase\win32aloem`
   - 本プロジェクトでは Intel FPGA Starter Edition 20.1 を使用

@@ -71,6 +71,8 @@ This is a **Claude + ModelSim Auto-Simulation Environment** for HDL development.
 
 ## Environment Setup
 
+- **OS:** Windows 11
+  - This project is developed and tested on Windows 11
 - **ModelSim:** Intel FPGA Starter Edition 20.1 (2020.1)
   - Path: `C:/intelFPGA/20.1/modelsim_ase/win32aloem`
   - Working directory: `sim/` (all simulations run from here)
