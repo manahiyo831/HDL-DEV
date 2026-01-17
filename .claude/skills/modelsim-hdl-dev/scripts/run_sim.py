@@ -48,8 +48,9 @@ def main():
         run_result = controller.execute_tcl(f"run {sim_time}")
 
         if not run_result['success']:
-            print(f"✗ FAILED: Simulation run failed")
-            print(f"  {run_result.get('message', 'Unknown error')}")
+            print()
+            error_msg = controller.analyze_error(run_result, context="simulation")
+            print(error_msg)
             controller.disconnect()
             sys.exit(1)
 

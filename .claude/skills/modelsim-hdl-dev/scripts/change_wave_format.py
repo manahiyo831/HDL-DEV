@@ -81,13 +81,8 @@ def main():
             sys.exit(0)
         else:
             print()
-            print("✗ FAILED: Could not change signal format")
-            print(f"  {result.get('message', 'Unknown error')}")
-            print()
-            print("Tips:")
-            print("  1. Run list_wave_signals.py to get exact signal name")
-            print("  2. Ensure signal path does NOT start with /")
-            print('  3. Example: "counter_tb/count" not "/counter_tb/count"')
+            error_msg = controller.analyze_error(result, context="waveform")
+            print(error_msg)
             sys.exit(1)
 
     except KeyboardInterrupt:

@@ -65,8 +65,8 @@ def main():
 
         if not result['success']:
             print()
-            print(f"✗ FAILED: Design compilation failed")
-            print(f"  File: {design_file}")
+            error_msg = controller.analyze_error(result, context="compilation")
+            print(error_msg)
             controller.disconnect()
             sys.exit(1)
 
@@ -76,8 +76,8 @@ def main():
 
         if not result['success']:
             print()
-            print(f"✗ FAILED: Testbench compilation failed")
-            print(f"  File: {testbench_file}")
+            error_msg = controller.analyze_error(result, context="compilation")
+            print(error_msg)
             controller.disconnect()
             sys.exit(1)
 

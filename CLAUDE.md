@@ -25,6 +25,44 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The `modelsim-hdl-dev` skill contains detailed workflow instructions, API documentation, examples, and templates that complement this CLAUDE.md file. Always refer to the skill for complete HDL development procedures.
 
+## Workflow Strategy: Parallel Task Execution
+
+**IMPORTANT: Always consider using parallel subagents to optimize workflow and conserve context.**
+
+When working on tasks, proactively evaluate if parallel execution is possible:
+
+1. **Independent Operations** - Tasks that don't depend on each other:
+   - Example: Creating multiple HDL modules simultaneously
+   - Example: Running simulations for different modules at the same time
+   - Example: Analyzing different waveform files in parallel
+
+2. **Research + Implementation** - Combining exploration with development:
+   - Example: One agent explores existing code patterns while another writes new module
+   - Example: One agent runs simulation while another prepares next test case
+
+3. **Multi-Module Development** - Working on related but separate components:
+   - Example: Design module + testbench creation in parallel
+   - Example: Creating specification document while another agent implements design
+
+**When to Propose Parallel Execution:**
+- If a task involves 2+ independent subtasks, ALWAYS propose using parallel subagents
+- Present the parallel approach to the user before starting work
+- Explain how parallelization saves context and speeds up completion
+
+**How to Use Parallel Subagents:**
+```
+Task tool with multiple invocations in a single response
+Agent types: general-purpose, Explore, Bash, etc.
+```
+
+**Example Proposal:**
+"This task involves creating a new PWM module and its testbench. I can work on these in parallel:
+- Subagent 1: Create PWM design module
+- Subagent 2: Create testbench with test cases
+Would you like me to proceed with parallel execution?"
+
+This approach prevents context overflow and completes work faster.
+
 ## Project Overview
 
 This is a **Claude + ModelSim Auto-Simulation Environment** for HDL development. The system enables AI-assisted hardware design with real-time simulation feedback. Claude generates Verilog code, Python scripts automatically compile and run it in ModelSim, and results are analyzed in a continuous feedback loop.

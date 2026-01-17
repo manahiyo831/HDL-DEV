@@ -63,16 +63,19 @@ def main():
                 if result['success']:
                     print(f"  ✓ Added: {signal_path}")
                 else:
-                    print(f"  ✗ Failed: {signal_path}")
-                    print(f"    {result.get('message', 'Unknown error')}")
+                    print()
+                    error_msg = controller.analyze_error(result, context="waveform")
+                    print(error_msg)
+                    print()
         else:
             # Add all signals recursively
             tcl_cmd = "add wave -r /*"
             result = controller.execute_tcl(tcl_cmd)
 
             if not result['success']:
-                print("✗ FAILED: Could not add signals")
-                print(f"  {result.get('message', 'Unknown error')}")
+                print()
+                error_msg = controller.analyze_error(result, context="waveform")
+                print(error_msg)
                 controller.disconnect()
                 sys.exit(1)
 

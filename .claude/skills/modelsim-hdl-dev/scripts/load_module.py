@@ -100,14 +100,20 @@ def load_module(design_files, testbench_file, top_module, sim_time="1us"):
         design_path = controller.normalize_path(str(design_file))
         result = controller.execute_tcl(f'vlog -work work {design_path}')
         if not result['success']:
-            print(f"✗ Failed to compile {design_file}")
+            print()
+            error_msg = controller.analyze_error(result, context="compilation")
+            print(error_msg)
+            print()
             return False
 
     # Compile testbench
     tb_path = controller.normalize_path(str(testbench_file))
     result = controller.execute_tcl(f'vlog -work work {tb_path}')
     if not result['success']:
-        print(f"✗ Failed to compile testbench {testbench_file}")
+        print()
+        error_msg = controller.analyze_error(result, context="compilation")
+        print(error_msg)
+        print()
         return False
 
     print("✓ Compilation successful")
@@ -116,8 +122,10 @@ def load_module(design_files, testbench_file, top_module, sim_time="1us"):
     print(f"\n[4/7] Loading testbench: {top_module}...")
     vsim_result = controller.execute_tcl(f'vsim work.{top_module}')
     if not vsim_result.get('success'):
-        print("✗ Failed to load testbench")
-        print(vsim_result)
+        print()
+        error_msg = controller.analyze_error(vsim_result, context="simulation")
+        print(error_msg)
+        print()
         return False
 
     # Set onfinish to stop (prevent $finish dialog)
@@ -136,8 +144,10 @@ def load_module(design_files, testbench_file, top_module, sim_time="1us"):
     run_result = controller.execute_tcl(f"run {sim_time}")
 
     if not run_result.get('success'):
-        print("✗ Simulation failed")
-        print(run_result)
+        print()
+        error_msg = controller.analyze_error(run_result, context="simulation")
+        print(error_msg)
+        print()
         return False
 
     print("✓ Simulation completed")

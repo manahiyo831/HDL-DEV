@@ -99,8 +99,8 @@ def main():
         controller.disconnect()
 
         if not result['success']:
-            print("✗ FAILED: Could not export wave configuration")
-            print(f"  {result.get('message', 'Unknown error')}")
+            error_msg = controller.analyze_error(result, context="waveform")
+            print(error_msg)
             temp_file.unlink(missing_ok=True)
             sys.exit(1)
 

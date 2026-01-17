@@ -49,8 +49,8 @@ def main():
             sys.exit(0)
         else:
             print()
-            print("✗ FAILED: Could not refresh waveform")
-            print(f"  {result.get('message', 'Unknown error')}")
+            error_msg = controller.analyze_error(result, context="waveform")
+            print(error_msg)
             sys.exit(1)
 
     except KeyboardInterrupt:

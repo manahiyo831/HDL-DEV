@@ -21,6 +21,9 @@ from pathlib import Path
 
 # Add scripts directory to path
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent / "internal"))
+
+from modelsim_controller import ModelSimController
 
 
 def start_modelsim_server():
@@ -85,8 +88,16 @@ def start_modelsim_server():
 
         print(f"✓ ModelSim GUI launched (PID: {process.pid})")
         print("")
-        print("Waiting for socket server to start (5 seconds)...")
-        time.sleep(5)
+        print("Waiting for socket server to start (up to 10 seconds)...")
+
+        # Test connection with retry (10-second timeout)
+        controller = ModelSimController(project_root)
+        if controller.connect(max_retries=20, retry_delay=0.5):
+            controller.disconnect()  # We just tested connection, disconnect
+            print("✓ Socket server is ready")
+        else:
+            print("✗ Socket server failed to start within timeout")
+            return False
 
         print("")
         print("="*60)

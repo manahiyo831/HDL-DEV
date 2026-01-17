@@ -74,6 +74,13 @@ def main():
                     print(output)
                     print()
 
+            # Show warnings if any
+            if 'warnings' in result and result['warnings']:
+                print("Warnings:")
+                for warning in result['warnings']:
+                    print(f"  {warning}")
+                print()
+
             sys.exit(0)
         else:
             print("✗ Command execution failed")
@@ -83,6 +90,20 @@ def main():
             if 'message' in result:
                 print("Error:")
                 print(f"  {result['message']}")
+                print()
+
+            # Show errors list if any
+            if 'errors' in result and result['errors']:
+                print("Details:")
+                for error in result['errors']:
+                    print(f"  {error}")
+                print()
+
+            # Show warnings if any (even on failure)
+            if 'warnings' in result and result['warnings']:
+                print("Warnings:")
+                for warning in result['warnings']:
+                    print(f"  {warning}")
                 print()
 
             sys.exit(1)
