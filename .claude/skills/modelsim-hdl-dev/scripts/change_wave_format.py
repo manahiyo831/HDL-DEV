@@ -142,9 +142,11 @@ def main():
     # Get project root from current working directory
     project_root = Path.cwd()
 
-    print(f"⏳ Changing signal format...")
+    print("⏳ Changing signal format...")
     print(f"  Signal: {signal_path}")
     print(f"  Format: {format_type}")
+    if format_type in ANALOG_FORMATS:
+        print(f"  Height: {height} pixels")
 
     try:
         # Create controller
@@ -155,22 +157,30 @@ def main():
             print("✗ ERROR: Cannot connect to ModelSim socket server")
             sys.exit(1)
 
+        print("Connected to ModelSim at localhost:12345")
+
         # Ensure signal path starts with / for property wave command
         if not signal_path.startswith('/'):
             signal_path = f"/{signal_path}"
 
-        # Build TCL command - use property wave to change radix
-        tcl_cmd = f"property wave -radix {format_type} {signal_path}"
-        result = controller.execute_tcl(tcl_cmd)
+        # Route to appropriate handler based on format category
+        if format_type in DIGITAL_FORMATS:
+            result = apply_digital_format(controller, signal_path, format_type)
+        elif format_type in ANALOG_FORMATS:
+            result = apply_analog_format(controller, signal_path, format_type, height)
 
         # Disconnect
         controller.disconnect()
+        print("Disconnected from ModelSim")
 
         # Check result
         if result['success']:
             print()
             print("✓ SUCCESS: Signal format changed")
             print(f"  Signal '{signal_path}' is now displayed as {format_type}")
+            if format_type in ANALOG_FORMATS:
+                print(f"  Height: {height} pixels")
+                print("  Dividers added for visual separation")
             sys.exit(0)
         else:
             print()
