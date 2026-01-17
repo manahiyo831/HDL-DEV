@@ -71,9 +71,10 @@ This is a **Claude + ModelSim Auto-Simulation Environment** for HDL development.
 
 ## Environment Setup
 
-- **ModelSim:** Intel FPGA Edition 20.1
+- **ModelSim:** Intel FPGA Starter Edition 20.1 (2020.1)
   - Path: `C:/intelFPGA/20.1/modelsim_ase/win32aloem`
   - Working directory: `sim/` (all simulations run from here)
+  - This project uses Intel FPGA Starter Edition 20.1
 - **Python:** 3.7+
 - **Dependencies:** Flask 3.0.0, pytest 8.3.4 (see [requirements.txt](requirements.txt))
 

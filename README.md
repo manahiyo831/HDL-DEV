@@ -28,8 +28,9 @@ HDL-DEV/
 
 ## 必要な環境
 
-- **ModelSim**: Intel FPGA Edition 20.1 以降
+- **ModelSim**: Intel FPGA Starter Edition 20.1 (2020.1) 以降
   - インストールパス: `C:\intelFPGA\20.1\modelsim_ase\win32aloem`
+  - 本プロジェクトでは Intel FPGA Starter Edition 20.1 を使用
 - **Python**: 3.7 以降
 
 ## セットアップ / Setup
