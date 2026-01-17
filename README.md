@@ -88,39 +88,7 @@ python .claude/skills/modelsim-hdl-dev/scripts/capture_screenshot.py "wave"
 
 ---
 
-### 2. Pythonライブラリとしての使用
-
-基本的なインフラストラクチャレイヤーを提供（高レベルAPIは含まれません）:
-
-```python
-from pathlib import Path
-import sys
-
-# 内部スクリプトへのパスを追加
-sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts/internal")))
-
-from modelsim_controller import ModelSimController
-
-# コントローラーを初期化
-controller = ModelSimController(Path.cwd())
-
-# サーバーに接続
-if controller.connect():
-    # TCLコマンド実行
-    result = controller.execute_tcl("wave zoom full")
-
-    # トランスクリプト読み込み
-    transcript = controller.read_transcript(lines=50)
-    print(transcript)
-
-    controller.disconnect()
-```
-
-**高レベルワークフローは、CLIスクリプトを使用してください（SKILL.mdを参照）**
-
----
-
-### 3. Claudeとの協働ワークフロー
+### 2. Claudeとの協働ワークフロー
 
 1. **要件を伝える**
    - 例: "8ビットの全加算器を作成してシミュレーションしてください"
@@ -143,23 +111,6 @@ if controller.connect():
    - GUIで `restart -f` してから `run 1us` で再実行
 
 
-## ModelSimClient API (低レベル)
-
-低レベルソケット通信クライアント。CLIスクリプトが内部的に使用します。
-
-**直接使用は推奨しません。** 代わりにCLIスクリプトまたはModelSimControllerを使用してください。
-
-### 主要メソッド
-- `connect(max_retries, retry_delay)`: サーバーに接続
-- `disconnect()`: 切断
-- `ping()`: 接続確認
-- `execute_tcl(tcl_code)`: TCLコマンド実行
-- その他の内部メソッド（詳細はソースコード参照）
-
-詳細は `.claude/skills/modelsim-hdl-dev/scripts/internal/modelsim_client.py` のソースコードを参照してください。
-
----
-
 ## サンプルコード
 
 ### カウンタ設計 ([hdl/design/counter.v](hdl/design/counter.v))
@@ -179,10 +130,6 @@ if controller.connect():
 - タイムアウト保護
 
 ## トラブルシューティング
-
-### エラー: "ModelSim not found"
-- ModelSimのインストールパスを確認してください
-- `ModelSimRunner`の初期化時にパスを指定してください
 
 ### シミュレーションが失敗する
 - トランスクリプトを確認: `sim/transcript`
