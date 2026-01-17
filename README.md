@@ -2,6 +2,8 @@
 
 ClaudeがHDLコードを生成し、ModelSimで自動的にシミュレーションして結果を確認するループ環境
 
+**Note (2026-01-17):** ドキュメントを実装に合わせて更新しました。以前のバージョンで説明されていた高レベルAPIメソッド（`start_gui_with_server()`, `quick_recompile_and_run()`等）は実装されていません。完全なワークフローはSKILL.mdのCLIスクリプトを使用してください。
+
 ## 概要
 
 このプロジェクトは、以下のワークフローを自動化します：
@@ -50,7 +52,7 @@ cd HDL-DEV
 ```
 
 **注意:** Windows開発者モードが無効の場合、管理者権限でGit操作を実行してください。
-詳細は [SYMLINK_SETUP.md](SYMLINK_SETUP.md) を参照してください。
+詳細は [archive/docs/SYMLINK_SETUP.md](archive/docs/SYMLINK_SETUP.md) を参照してください。
 
 **Linux/Mac環境:**
 ```bash
@@ -66,94 +68,76 @@ pip install -r requirements.txt
 
 ## 使い方
 
-### 1. ソケット通信で高速イテレーション（推奨・NEW!）
+### 1. SKILLを使用したCLI方式（推奨）
 
-**ModelSimを起動したまま** Pythonから制御することで、HDL修正後の再シミュレーションが超高速に。
+modelsim-hdl-dev SKILLを有効化して、CLIスクリプトを使用します。
 
-#### 初回起動
+**完全なドキュメント:** `.claude/skills/modelsim-hdl-dev/SKILL.md`
 
-**注意:** スクリプトはSKILL内に配置されているため、Pythonパスの調整が必要です：
+#### クイックスタート
+
+```bash
+# Step 1: ModelSim起動（初回のみ）
+python .claude/skills/modelsim-hdl-dev/scripts/start_modelsim_server.py
+
+# Step 2: 接続確認
+python .claude/skills/modelsim-hdl-dev/scripts/connection_check.py
+
+# Step 3: デザインロード
+python .claude/skills/modelsim-hdl-dev/scripts/load_module.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb" "1us"
+
+# Step 4: HDL修正後の高速イテレーション
+python .claude/skills/modelsim-hdl-dev/scripts/compile.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb"
+python .claude/skills/modelsim-hdl-dev/scripts/run_sim.py "1us"
+python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 50
+
+# Step 5: 波形解析
+python .claude/skills/modelsim-hdl-dev/scripts/list_wave_signals.py
+python .claude/skills/modelsim-hdl-dev/scripts/change_wave_format.py "counter_tb/count" "unsigned"
+python .claude/skills/modelsim-hdl-dev/scripts/capture_screenshot.py "wave"
+```
+
+**利点:**
+- ✓ ModelSim再起動不要で超高速イテレーション
+- ✓ シンプルなCLIインターフェース
+- ✓ Claudeとの協働に最適
+- ✓ 波形をリアルタイムで確認しながら開発
+
+---
+
+### 2. Pythonライブラリとしての使用
+
+基本的なインフラストラクチャレイヤーを提供（高レベルAPIは含まれません）:
 
 ```python
 from pathlib import Path
 import sys
 
-# SKILLスクリプトへのパスを追加
-sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts")))
+# 内部スクリプトへのパスを追加
+sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts/internal")))
 
 from modelsim_controller import ModelSimController
 
 # コントローラーを初期化
 controller = ModelSimController(Path.cwd())
 
-# ModelSim GUIをソケットサーバー付きで起動（一度だけ）
-controller.start_gui_with_server(
-    design_files=[Path("hdl/design/counter.v")],
-    testbench_file=Path("hdl/testbench/counter_tb.v"),
-    top_module="counter_tb",
-    sim_time="1us"
-)
+# サーバーに接続
+if controller.connect():
+    # TCLコマンド実行
+    result = controller.execute_tcl("wave zoom full")
 
-# ModelSim GUIが開いて波形表示、ソケットサーバーが起動します
+    # トランスクリプト読み込み
+    transcript = controller.read_transcript(lines=50)
+    print(transcript)
+
+    controller.disconnect()
 ```
 
-#### HDL修正後の再シミュレーション
-
-HDLファイルを修正したら、**ModelSimを再起動せずに**：
-
-```python
-# 再コンパイル→再起動→実行→波形更新を一括実行
-result = controller.quick_recompile_and_run(sim_time="1us")
-
-if result['recompile']['success']:
-    print("✓ SUCCESS: シミュレーション完了")
-else:
-    print("✗ FAILED: コンパイルエラー")
-    for error in result['recompile']['errors']:
-        print(f"  - {error}")
-```
-
-#### より細かい制御
-
-```python
-# 個別コマンド
-controller.recompile(design_files=[...], testbench_file=...)
-controller.restart()
-controller.run("1us")
-controller.refresh_waveform()
-
-# 任意のTCLコマンド実行
-controller.execute_tcl("wave zoom range 0ns 500ns")
-
-# 終了時
-controller.disconnect()
-```
-
-**利点:**
-- ✓ ModelSim再起動不要で超高速イテレーション
-- ✓ Pythonから柔軟に制御可能
-- ✓ Claudeとの協働に最適
-- ✓ 波形をリアルタイムで確認しながら開発
+**高レベルワークフローは、CLIスクリプトを使用してください（SKILL.mdを参照）**
 
 ---
 
-### 2. SKILLを使用したCLI方式（推奨）
-
-modelsim-hdl-dev SKILLを有効化して、CLIスクリプトを使用します。
-
-詳細は `.claude/skills/modelsim-hdl-dev/SKILL.md` を参照してください。
-
-```bash
-# ModelSim起動
-python .claude/skills/modelsim-hdl-dev/scripts/modelsim_start.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb" "1us"
-
-# 高速イテレーション
-python .claude/skills/modelsim-hdl-dev/scripts/compile.py "hdl/design/counter.v" "hdl/testbench/counter_tb.v" "counter_tb"
-python .claude/skills/modelsim-hdl-dev/scripts/run_sim.py "1us"
-python .claude/skills/modelsim-hdl-dev/scripts/analyze_results.py
-```
-
-### 4. Claudeとの協働ワークフロー
+### 3. Claudeとの協働ワークフロー
 
 1. **要件を伝える**
    - 例: "8ビットの全加算器を作成してシミュレーションしてください"
@@ -175,141 +159,21 @@ python .claude/skills/modelsim-hdl-dev/scripts/analyze_results.py
    - Claudeが設計を修正
    - GUIで `restart -f` してから `run 1us` で再実行
 
-## ModelSimRunner API
 
-### `__init__(modelsim_path: str)`
-ModelSimランナーを初期化します。
+## ModelSimClient API (低レベル)
 
-**引数:**
-- `modelsim_path`: ModelSimのインストールディレクトリ（デフォルト: `C:/intelFPGA/20.1/modelsim_ase/win32aloem`）
+低レベルソケット通信クライアント。CLIスクリプトが内部的に使用します。
 
-### `simulate(design_files, testbench_file, top_module, sim_time)`
-完全な自動シミュレーションフローを実行します。
-
-**引数:**
-- `design_files`: 設計ファイルのリスト
-- `testbench_file`: テストベンチファイル
-- `top_module`: トップモジュール名
-- `sim_time`: シミュレーション時間（例: "1us", "10ns", "100ps"）
-
-**戻り値:**
-```python
-{
-    "overall_success": bool,          # 全体の成功/失敗
-    "tcl_script": str,                # 使用されたTCLスクリプト
-    "log_file": str,                  # ログファイルパス
-    "stdout": str,                    # 標準出力
-    "stderr": str,                    # 標準エラー出力
-    "log_analysis": {
-        "success": bool,              # シミュレーション成功
-        "errors": list,               # エラーメッセージ
-        "warnings": list,             # 警告メッセージ
-        "display_outputs": list,      # $display出力
-        "raw_log": str                # 生ログ
-    }
-}
-```
-
-### `print_result(result)`
-シミュレーション結果を見やすく表示します。
-
----
-
-## ModelSimController API (NEW!)
-
-### `__init__(project_root, modelsim_path, server_port)`
-ModelSimコントローラーを初期化します。
-
-**引数:**
-- `project_root`: プロジェクトルートディレクトリ (例: `Path("d:/Claude/Ralph_loop")`)
-- `modelsim_path`: ModelSimのインストールディレクトリ（デフォルト: `C:/intelFPGA/20.1/modelsim_ase/win32aloem`）
-- `server_port`: ソケットサーバーのポート番号（デフォルト: 12345）
-
-### `start_gui_with_server(design_files, testbench_file, top_module, sim_time, auto_connect, connect_delay)`
-ModelSim GUIをソケットサーバー付きで起動します。
-
-**引数:**
-- `design_files`: 設計ファイルのリスト
-- `testbench_file`: テストベンチファイル
-- `top_module`: トップモジュール名
-- `sim_time`: 初回シミュレーション時間（デフォルト: "1us"）
-- `auto_connect`: 起動後に自動接続するか（デフォルト: True）
-- `connect_delay`: 接続前の待機時間（秒）（デフォルト: 3.0）
-
-**戻り値:** True（成功）/ False（失敗）
-
-### `quick_recompile_and_run(design_files, testbench_file, sim_time, restart, refresh_wave)`
-再コンパイル→再起動→実行→波形更新を一括実行します。
-
-**引数:**
-- `design_files`: 設計ファイル（Noneの場合は保存済みのものを使用）
-- `testbench_file`: テストベンチファイル（Noneの場合は保存済みのものを使用）
-- `sim_time`: シミュレーション時間（デフォルト: "1us"）
-- `restart`: 再起動するか（デフォルト: True）
-- `refresh_wave`: 波形を更新するか（デフォルト: True）
-
-**戻り値:**
-```python
-{
-    "success": bool,
-    "message": str,
-    "recompile": {...},    # 再コンパイル結果
-    "restart": {...},      # 再起動結果
-    "run": {...},          # 実行結果
-    "wave_refresh": {...}  # 波形更新結果
-}
-```
-
-### その他のメソッド
-- `connect(max_retries, retry_delay)`: サーバーに接続
-- `disconnect()`: サーバーから切断
-- `is_connected()`: 接続状態を確認
-- `ping()`: サーバーに ping
-- `recompile(design_files, testbench_file)`: 再コンパイル
-- `restart()`: シミュレーション再起動
-- `run(time)`: シミュレーション実行
-- `refresh_waveform()`: 波形更新
-- `execute_tcl(tcl_code)`: 任意のTCLコマンド実行
-- `shutdown_server()`: サーバー停止（ModelSimは継続）
-
----
-
-## ModelSimClient API (NEW!)
-
-低レベルAPI。より細かい制御が必要な場合に使用。
+**直接使用は推奨しません。** 代わりにCLIスクリプトまたはModelSimControllerを使用してください。
 
 ### 主要メソッド
-- `connect(max_retries, retry_delay)`: サーバーに接続（リトライあり）
+- `connect(max_retries, retry_delay)`: サーバーに接続
 - `disconnect()`: 切断
 - `ping()`: 接続確認
-- `recompile(design_files, testbench_file)`: 再コンパイル
-- `restart_simulation()`: シミュレーション再起動
-- `run_simulation(time)`: シミュレーション実行
-- `refresh_waveform()`: 波形更新
 - `execute_tcl(tcl_code)`: TCLコマンド実行
-- `shutdown_server()`: サーバー停止
+- その他の内部メソッド（詳細はソースコード参照）
 
-**使用例:**
-```python
-import sys
-from pathlib import Path
-
-# SKILLスクリプトへのパスを追加
-sys.path.insert(0, str(Path(".claude/skills/modelsim-hdl-dev/scripts")))
-
-from modelsim_client import ModelSimClient
-
-with ModelSimClient(port=12345) as client:
-    if client.ping():
-        result = client.recompile(
-            design_files=["hdl/design/counter.v"],
-            testbench_file="hdl/testbench/counter_tb.v"
-        )
-        if result['success']:
-            client.restart_simulation()
-            client.run_simulation("1us")
-            client.refresh_waveform()
-```
+詳細は `.claude/skills/modelsim-hdl-dev/scripts/internal/modelsim_client.py` のソースコードを参照してください。
 
 ---
 
@@ -338,9 +202,9 @@ with ModelSimClient(port=12345) as client:
 - `ModelSimRunner`の初期化時にパスを指定してください
 
 ### シミュレーションが失敗する
-- ログファイルを確認: `results/logs/sim_*.log`
 - トランスクリプトを確認: `sim/transcript`
 - エラーメッセージを読んで、設計を修正してください
+- または: `python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 50`
 
 ### 波形ファイルを見たい
 波形ファイルの表示はSKILL内のスクリプトを使用:
