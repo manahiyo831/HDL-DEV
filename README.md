@@ -2,7 +2,6 @@
 
 ClaudeがHDLコードを生成し、ModelSimで自動的にシミュレーションして結果を確認するループ環境
 
-**Note (2026-01-17):** ドキュメントを実装に合わせて更新しました。以前のバージョンで説明されていた高レベルAPIメソッド（`start_gui_with_server()`, `quick_recompile_and_run()`等）は実装されていません。完全なワークフローはSKILL.mdのCLIスクリプトを使用してください。
 
 ## 概要
 
@@ -39,25 +38,6 @@ HDL-DEV/
 
 ### リポジトリのクローン
 
-このリポジトリは `.claude/skills/` にシンボリックリンクを含んでいます。
-
-**Windows環境:**
-```bash
-# 1. Git設定（初回のみ）
-git config --global core.symlinks true
-
-# 2. 開発者モードを有効化（推奨）
-# 設定 → システム → 開発者向け → 「開発者モード」をON
-
-# 3. クローン
-git clone https://github.com/manahiyo831/HDL-DEV.git
-cd HDL-DEV
-```
-
-**注意:** Windows開発者モードが無効の場合、管理者権限でGit操作を実行してください。
-詳細は [archive/docs/SYMLINK_SETUP.md](archive/docs/SYMLINK_SETUP.md) を参照してください。
-
-**Linux/Mac環境:**
 ```bash
 git clone https://github.com/manahiyo831/HDL-DEV.git
 cd HDL-DEV
