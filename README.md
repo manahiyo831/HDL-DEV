@@ -151,23 +151,6 @@ python .claude/skills/modelsim-hdl-dev/scripts/view_waveform.py --list
 - 波形をクリックしてカーソル移動
 - 右クリックメニューで信号の表示形式変更（16進数、2進数など）
 
-## ログファイルの読み方
-
-### 成功例
-```
-# === Counter Testbench Start ===
-# ...
-# PASS: Counter is functioning
-# ** Note: $finish
-# Errors: 0, Warnings: 0
-```
-
-### 失敗例
-```
-# ** Error: (vlog-xxx) ...
-# Errors: 1, Warnings: 0
-```
-
 ## Tips
 
 1. **シミュレーション時間の設定**
@@ -183,7 +166,7 @@ python .claude/skills/modelsim-hdl-dev/scripts/view_waveform.py --list
 3. **デバッグ**
    - `$display`で中間結果を出力
    - 波形ファイルを確認
-   - ログファイルの全体を読む
+   - transcriptを確認: `python .claude/skills/modelsim-hdl-dev/scripts/get_transcript.py 100`
 
 ## ライセンス
 
