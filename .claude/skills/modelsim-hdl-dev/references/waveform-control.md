@@ -68,23 +68,20 @@ python $SKILL/scripts/change_wave_format.py "counter_tb/data" "binary"
 
 ## Analog Wave Display
 
-Display signals as analog waveforms (stepped or interpolated) for better visualization of value changes.
+Display signals as analog waveforms with auto-scaled min/max values for better visualization of value changes.
 
-**Supported analog formats:**
-- `analog-step` - Stepped analog display (階段状のアナログ表示)
-- `analog-interpolated` - Smooth interpolated analog display (補間された滑らかなアナログ表示)
-
-**Usage:**
+**Usage with add_wave_analog.py:**
 
 ```bash
-# Analog-step with default height (80 pixels)
-python $SKILL/scripts/change_wave_format.py "counter_tb/count" "analog-step"
+# Add analog waveform (radix REQUIRED)
+python $SKILL/scripts/add_wave_analog.py "counter_tb/count" --radix unsigned
+# Register [7:0] → Auto-scales to 0-255
 
-# Analog-step with custom height
-python $SKILL/scripts/change_wave_format.py "pwm_tb/duty" "analog-step" 100
+python $SKILL/scripts/add_wave_analog.py "adc_tb/sample" --radix signed
+# Register [11:0] → Auto-scales to -2048 to 2047
 
-# Analog-interpolated with custom height
-python $SKILL/scripts/change_wave_format.py "pwm_tb/duty" "analog-interpolated" 120
+# With custom height
+python $SKILL/scripts/add_wave_analog.py "pwm_tb/duty" --radix unsigned --height 120
 ```
 
 **Use cases:**
@@ -94,7 +91,10 @@ python $SKILL/scripts/change_wave_format.py "pwm_tb/duty" "analog-interpolated" 
 - Analyze signal transitions visually
 
 **Important Notes:**
-- Default height is 80 pixels (can be customized with optional third parameter)
-- Analog formats use `property wave -format` command
-- Height is adjusted using `property wave -height` command
-- Switch back to digital format using any digital radix format (binary, hex, unsigned, etc.)
+- The `--radix` parameter is **required** (signed or unsigned)
+- Auto-scaling: Script automatically calculates min/max from bit width
+- Only signals with explicit bit width (e.g., `Register [7:0]`, `Wire [15:0]`) are supported
+- Signals without bit width (`Integer`, `Real`) are **not supported**
+- Analog signals are added with `_analog` suffix label to avoid conflicts
+- Default height is 80 pixels (customizable with `--height` parameter)
+- You can have both digital and analog views of the same signal simultaneously
